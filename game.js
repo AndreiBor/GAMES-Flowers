@@ -316,7 +316,7 @@ function showFeedback(message) {
 }
 
 function recordingURL(clip) {
-  return new URL(`./assets/audio/gentle/${clip}.mp3?v=4`, import.meta.url).href;
+  return new URL(`./assets/audio/gentle/${clip}.mp3?v=5`, import.meta.url).href;
 }
 
 function playRecording(clip) {
