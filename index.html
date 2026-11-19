@@ -7,8 +7,8 @@
     <meta name="description" content="Цветочная полянка — игра на счёт и цвета. Собери букет и подари его маме!">
     <title>Цветочная полянка</title>
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="./styles.css?v=7">
-    <script type="module" src="./game.js?v=10"></script>
+    <link rel="stylesheet" href="./styles.css?v=8">
+    <script type="module" src="./game.js?v=11"></script>
   </head>
   <body>
     <header class="page-header">
@@ -28,7 +28,7 @@
       <div class="game-heading">
         <h1>Сбор цветов</h1>
         <div class="progress">
-          <span id="round-label">Раунд 1 из 7</span>
+          <span id="round-label">Раунд 1 из 9</span>
           <ol class="round-steps" id="round-steps" aria-label="Раунды"></ol>
         </div>
       </div>
@@ -58,16 +58,19 @@
         <div class="butterfly" aria-hidden="true"><i></i><i></i></div>
         <div id="mushrooms" class="mushrooms" aria-hidden="true"></div>
         <div id="flowers" class="flowers"></div>
-        <div id="hedgehog" class="hedgehog" role="img" aria-label="Ёжик собирает грибы" hidden>
-          <span class="ground-shadow"></span>
-          <div class="hedgehog-rig" aria-hidden="true">
-            <img class="hedgehog-paw paw-back-far paw-opposite" src="./assets/characters/hedgehog-paw.webp" alt="">
-            <img class="hedgehog-paw paw-front-far" src="./assets/characters/hedgehog-paw.webp" alt="">
-            <img class="hedgehog-paw paw-back-near" src="./assets/characters/hedgehog-paw.webp" alt="">
-            <img class="hedgehog-paw paw-front-near paw-opposite" src="./assets/characters/hedgehog-paw.webp" alt="">
-            <img class="hedgehog-body" src="./assets/characters/hedgehog-body.webp" alt="">
+        <div id="hedgehogs" class="hedgehogs"></div>
+        <template id="hedgehog-template">
+          <div id="hedgehog" class="hedgehog" role="img" aria-label="Ёжик собирает грибы">
+            <span class="ground-shadow"></span>
+            <div class="hedgehog-rig" aria-hidden="true">
+              <img class="hedgehog-paw paw-back-far paw-opposite" src="./assets/characters/hedgehog-paw.webp" alt="">
+              <img class="hedgehog-paw paw-front-far" src="./assets/characters/hedgehog-paw.webp" alt="">
+              <img class="hedgehog-paw paw-back-near" src="./assets/characters/hedgehog-paw.webp" alt="">
+              <img class="hedgehog-paw paw-front-near paw-opposite" src="./assets/characters/hedgehog-paw.webp" alt="">
+              <img class="hedgehog-body" src="./assets/characters/hedgehog-body.webp" alt="">
+            </div>
           </div>
-        </div>
+        </template>
         <div class="girl" id="girl" data-pose="stand" aria-hidden="true">
           <span class="ground-shadow"></span>
           <div class="girl-poses">

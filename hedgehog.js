@@ -5,23 +5,26 @@ export function groundLayer(y) {
   return Math.floor(y * 100);
 }
 
-export class Hedgehog {
-  constructor(sprite, mushroomBed) {
-    this.sprite = sprite;
+export class Hedgehogs {
+  constructor(spriteBed, spriteTemplate, mushroomBed) {
+    this.spriteBed = spriteBed;
+    this.spriteTemplate = spriteTemplate;
     this.mushroomBed = mushroomBed;
-    this.position = { x: 0, y: 0 };
+    this.actors = [];
   }
 
-  reset(pace, compact) {
+  reset(pace, count, compact, size) {
     this.pace = pace;
-    this.sprite.hidden = !pace;
-    this.mushroomBed.replaceChildren();
-    if (!pace) return;
+    this.distance = 0;
+    this.length = 0;
+    this.actors = Array.from({ length: count }, (_, index) => {
+      const sprite = this.spriteTemplate.content.firstElementChild.cloneNode(true);
+      if (index) sprite.removeAttribute("id");
+      return { sprite, spacing: index / count, stride: index / count * 2 * Math.PI };
+    });
+    this.spriteBed.replaceChildren(...this.actors.map(actor => actor.sprite));
 
-    this.trail = (compact ? phoneTrail : wideTrail).map(([x, y]) => ({ x, y }));
-    this.position = this.trail[0];
-    this.nextStop = 1;
-    this.stride = 0;
+    this.trail = count ? (compact ? phoneTrail : wideTrail).map(([x, y]) => ({ x, y })) : [];
     this.mushrooms = this.trail.slice(1).map(({ x, y }) => {
       const mushroom = document.createElement("span");
       mushroom.className = "wood-mushroom";
@@ -29,65 +32,82 @@ export class Hedgehog {
       mushroom.style.top = `${y}%`;
       return mushroom;
     });
-    this.mushroomBed.append(...this.mushrooms);
-    this.sprite.style.setProperty("--hedgehog-direction", 1);
-    this.renderStride();
-    this.render();
+    this.mushroomBed.replaceChildren(...this.mushrooms);
+    this.resize(size);
+    for (const actor of this.actors) this.renderStride(actor);
   }
 
-  advance(seconds, size) {
-    const target = this.trail[this.nextStop];
-    const dx = (target.x - this.position.x) * size.width / 100;
-    const dy = (target.y - this.position.y) * size.height / 100;
-    const distance = Math.hypot(dx, dy);
-    const step = Math.max(26, size.width * .065) * this.pace * seconds;
+  resize({ width, height }) {
+    if (!this.actors.length) return;
+    const progress = this.length ? this.distance / this.length : 0;
+    this.length = 0;
+    this.segments = this.trail.map((from, index) => {
+      const nextStop = (index + 1) % this.trail.length;
+      const to = this.trail[nextStop];
+      const length = Math.hypot((to.x - from.x) * width, (to.y - from.y) * height) / 100;
+      this.length += length;
+      return { from, to, length, end: this.length, nextStop };
+    });
+    this.distance = progress * this.length;
+    if (this.length) for (const actor of this.actors) this.place(actor);
+  }
 
-    if (distance <= step) {
-      this.position = target;
-      if (this.nextStop) this.mushrooms[this.nextStop - 1].hidden = true;
-      else {
-        for (const mushroom of this.mushrooms) mushroom.hidden = false;
-      }
-      this.nextStop = (this.nextStop + 1) % this.trail.length;
-    } else {
-      const fraction = step / distance;
-      this.position = {
-        x: this.position.x + (target.x - this.position.x) * fraction,
-        y: this.position.y + (target.y - this.position.y) * fraction,
-      };
+  place(actor) {
+    // Space the hedgehogs by traveled distance, including along diagonal legs.
+    const distance = (this.distance + actor.spacing * this.length) % this.length;
+    const { from, to, nextStop, end, length } = this.segments.find(segment => distance < segment.end);
+    const fraction = 1 - (end - distance) / length;
+    const x = from.x + (to.x - from.x) * fraction;
+    const y = from.y + (to.y - from.y) * fraction;
+    actor.position = { x, y };
+    actor.nextStop = nextStop;
+    actor.sprite.style.left = `${x}%`;
+    actor.sprite.style.top = `${y}%`;
+    actor.sprite.style.zIndex = groundLayer(y);
+    actor.sprite.style.setProperty("--hedgehog-direction", Math.sign(to.x - from.x));
+  }
+
+  advance(seconds, { width }) {
+    if (!this.length) return;
+    const step = Math.max(26, width * .065) * this.pace * seconds;
+    this.distance += step;
+    if (this.distance >= this.length) {
+      this.distance %= this.length;
+      for (const mushroom of this.mushrooms) mushroom.hidden = false;
     }
-    if (Math.abs(dx) > .5) this.sprite.style.setProperty("--hedgehog-direction", Math.sign(dx));
-    const strideLength = Math.min(28, Math.max(17, size.width * .028));
-    this.stride = (this.stride + Math.min(distance, step) / strideLength * 2 * Math.PI) % (2 * Math.PI);
-    this.renderStride();
-    this.render();
+    const strideLength = Math.min(28, Math.max(17, width * .028));
+    for (const actor of this.actors) {
+      const nextStop = actor.nextStop;
+      actor.previous = actor.position;
+      this.place(actor);
+      if (nextStop && actor.nextStop !== nextStop) this.mushrooms[nextStop - 1].hidden = true;
+      actor.stride = (actor.stride + step / strideLength * 2 * Math.PI) % (2 * Math.PI);
+      this.renderStride(actor);
+    }
   }
 
-  renderStride() {
+  renderStride({ sprite, stride }) {
     // The planted paws push backward. The rig mirrors this motion when turning.
-    const swing = -Math.sin(this.stride);
-    const lift = Math.cos(this.stride);
-    this.sprite.style.setProperty("--paw-swing", `${swing * 28}deg`);
-    this.sprite.style.setProperty("--paw-lift", `${-Math.max(0, lift) * 20}%`);
-    this.sprite.style.setProperty("--opposite-paw-lift", `${-Math.max(0, -lift) * 20}%`);
-    this.sprite.style.setProperty("--hedgehog-bob", `${-Math.abs(swing) * 1.7}px`);
+    const swing = -Math.sin(stride);
+    const lift = Math.cos(stride);
+    sprite.style.setProperty("--paw-swing", `${swing * 28}deg`);
+    sprite.style.setProperty("--paw-lift", `${-Math.max(0, lift) * 20}%`);
+    sprite.style.setProperty("--opposite-paw-lift", `${-Math.max(0, -lift) * 20}%`);
+    sprite.style.setProperty("--hedgehog-bob", `${-Math.abs(swing) * 1.7}px`);
   }
 
-  render() {
-    this.sprite.style.left = `${this.position.x}%`;
-    this.sprite.style.top = `${this.position.y}%`;
-    this.sprite.style.zIndex = groundLayer(this.position.y);
-  }
-
-  crossed(playerBefore, playerAfter, hedgehogBefore, { width, height }) {
+  crossed(playerBefore, playerAfter, { width, height }) {
     // Test the relative movement over the whole frame, including fast crossings.
-    const x = (playerBefore.x - hedgehogBefore.x) * width / 100;
-    const y = (playerBefore.y - hedgehogBefore.y) * height / 100;
-    const dx = (playerAfter.x - this.position.x) * width / 100 - x;
-    const dy = (playerAfter.y - this.position.y) * height / 100 - y;
-    const lengthSquared = dx * dx + dy * dy;
-    const closest = lengthSquared ? Math.max(0, Math.min(1, -(x * dx + y * dy) / lengthSquared)) : 0;
     const radius = Math.min(26, Math.max(17, width * .03));
-    return Math.hypot(x + closest * dx, y + closest * dy) <= radius;
+    return this.actors.some(({ position, previous }) => {
+      if (!previous) return false;
+      const x = (playerBefore.x - previous.x) * width / 100;
+      const y = (playerBefore.y - previous.y) * height / 100;
+      const dx = (playerAfter.x - position.x) * width / 100 - x;
+      const dy = (playerAfter.y - position.y) * height / 100 - y;
+      const lengthSquared = dx * dx + dy * dy;
+      const closest = lengthSquared ? Math.max(0, Math.min(1, -(x * dx + y * dy) / lengthSquared)) : 0;
+      return Math.hypot(x + closest * dx, y + closest * dy) <= radius;
+    });
   }
 }

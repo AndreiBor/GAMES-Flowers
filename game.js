@@ -1,9 +1,10 @@
 import { flowerImages, flowerTypes, logoFlower } from "./flower-art.js";
-import { Hedgehog, groundLayer } from "./hedgehog.js?v=6";
+import { Hedgehogs, groundLayer } from "./hedgehog.js?v=7";
 
 const ROUND_SECONDS = 120;
 const RUN_POSES = ["run-1", "run-2", "run-3", "run-2"];
 const RUN_FRAME_SECONDS = .09;
+const FINAL_HEDGEHOG_PACE = 2.457;
 const rounds = [
   {
     task: "Собери 5 синих цветов",
@@ -41,7 +42,21 @@ const rounds = [
     task: "Собери все цветы, кроме жёлтых",
     goal: "no-yellow",
     voice: "round-7",
-    hedgehogPace: 2.457,
+    hedgehogPace: FINAL_HEDGEHOG_PACE,
+  },
+  {
+    task: "Собери все цветы, кроме трёх",
+    leaveOnMeadow: 3,
+    voice: "round-8",
+    hedgehogPace: FINAL_HEDGEHOG_PACE,
+    hedgehogCount: 3,
+  },
+  {
+    task: "Собери один цветок жёлтого цвета",
+    target: { yellow: 1 },
+    voice: "round-9",
+    hedgehogPace: FINAL_HEDGEHOG_PACE,
+    hedgehogCount: 7,
   },
 ];
 
@@ -67,7 +82,11 @@ const meadow = document.querySelector("#meadow");
 const flowerBed = document.querySelector("#flowers");
 const girl = document.querySelector("#girl");
 const droppedFlowers = document.querySelector("#dropped-flowers");
-const hedgehog = new Hedgehog(document.querySelector("#hedgehog"), document.querySelector("#mushrooms"));
+const hedgehogs = new Hedgehogs(
+  document.querySelector("#hedgehogs"),
+  document.querySelector("#hedgehog-template"),
+  document.querySelector("#mushrooms"),
+);
 const mom = document.querySelector("#mom");
 const timer = document.querySelector("#timer");
 const timeText = document.querySelector("#time");
@@ -243,6 +262,7 @@ function measureMeadow() {
     x: mom.offsetLeft / meadowSize.width * 100,
     y: mom.offsetTop / meadowSize.height * 100,
   };
+  hedgehogs.resize(meadowSize);
 }
 
 function renderPlayer(running = false, elapsed = 0) {
@@ -286,12 +306,17 @@ function clearReaction() {
   droppedFlowers.replaceChildren();
 }
 
+function resetHedgehogs() {
+  const { hedgehogPace = 0, hedgehogCount = hedgehogPace ? 1 : 0 } = rounds[roundIndex];
+  hedgehogs.reset(hedgehogPace, hedgehogCount, narrow.matches, meadowSize);
+}
+
 function resetField() {
   const focusedFlower = flowerBed.contains(document.activeElement);
   clearMoves();
   clearReaction();
   collisionGraceUntil = 0;
-  hedgehog.reset(rounds[roundIndex].hedgehogPace, narrow.matches);
+  resetHedgehogs();
   player = { ...startPosition(), direction: 1 };
   flowers = plot.map(makeFlower);
   flowerBed.replaceChildren(...flowers.map(flower => flower.button));
@@ -374,7 +399,7 @@ function syncPause() {
     if (collisionGraceUntil) collisionGraceUntil += elapsed;
     if (resumeVoice && !muted) voice.play().catch(() => {});
     resumeVoice = false;
-    if (hedgehog.pace || activeMove || moves.length) requestMotion();
+    if (hedgehogs.pace || activeMove || moves.length) requestMotion();
   }
   renderPause();
 }
@@ -398,16 +423,25 @@ function prepareRound() {
   roundTarget = round.target ?? countColors(flowers.map(flower => flower.color));
   if (round.goal === "no-yellow") delete roundTarget.yellow;
   task.textContent = round.task;
-  missionHint.textContent = hedgehog.pace
-    ? "Осторожно, ёжик! Отнеси букет маме."
+  const manyHedgehogs = round.hedgehogCount > 1;
+  missionHint.textContent = hedgehogs.pace
+    ? `${manyHedgehogs ? "Осторожнее с ёжиками." : "Осторожно, ёжик!"} Отнеси букет маме.`
     : "Потом подари букет маме.";
-  movementHint.textContent = hedgehog.pace
-    ? "Чтобы обойти ёжика, нажми на лужайку."
+  movementHint.textContent = hedgehogs.pace
+    ? `Чтобы обойти ${manyHedgehogs ? "ёжиков" : "ёжика"}, нажми на лужайку.`
     : "Нажимай на цветы, чтобы собрать их.";
   targets.setAttribute("aria-label", round.goal === "one-color" ? "Выбери один цвет" : "Цветы для букета");
-  targets.replaceChildren(...Object.keys(flowerTypes)
-    .filter(color => roundTarget[color])
-    .map(color => makeCount(color, roundTarget[color])));
+  if (round.leaveOnMeadow) {
+    const count = flowers.length - round.leaveOnMeadow;
+    const total = document.createElement("li");
+    total.className = "flower-count target-total";
+    total.textContent = `${count} ${flowerNumber(count)}`;
+    targets.replaceChildren(total);
+  } else {
+    targets.replaceChildren(...Object.keys(flowerTypes)
+      .filter(color => roundTarget[color])
+      .map(color => makeCount(color, roundTarget[color])));
+  }
   renderProgress();
   showFeedback("");
   displayTime(ROUND_SECONDS);
@@ -428,7 +462,7 @@ function startRound() {
   renderAction();
   renderPause();
   playVoice(rounds[roundIndex].voice);
-  if (hedgehog.pace) requestMotion();
+  if (hedgehogs.pace) requestMotion();
 }
 
 function launchRound(index) {
@@ -442,7 +476,7 @@ function retryAttempt(message, clip) {
   restartClock();
   showFeedback(message);
   playVoice(clip);
-  if (hedgehog.pace) requestMotion();
+  if (hedgehogs.pace) requestMotion();
 }
 
 function checkTime(now = performance.now()) {
@@ -500,15 +534,20 @@ function collect(flower) {
   if (document.activeElement === flower.button) meadow.focus({ preventScroll: true });
 }
 
-function deliver() {
-  const round = rounds[roundIndex];
+function matchesRoundGoal(round) {
+  if (round.leaveOnMeadow) return basket.length === flowers.length - round.leaveOnMeadow;
   const counts = countColors(basket);
   const target = Object.entries(roundTarget);
-  const correct = round.goal === "one-color"
-    ? target.some(([color, count]) => basket.length === count && counts[color] === count)
-    : basket.length === target.reduce((sum, [, count]) => sum + count, 0)
-      && target.every(([color, count]) => counts[color] === count);
-  if (correct) {
+  if (round.goal === "one-color") {
+    return target.some(([color, count]) => basket.length === count && counts[color] === count);
+  }
+  return basket.length === target.reduce((sum, [, count]) => sum + count, 0)
+    && target.every(([color, count]) => counts[color] === count);
+}
+
+function deliver() {
+  const round = rounds[roundIndex];
+  if (matchesRoundGoal(round)) {
     celebrate();
   } else if (roundIndex === 0 && basket.length !== 5) {
     retryAttempt("Нужно пять цветов. Попробуй ещё раз!", "need-five");
@@ -590,8 +629,7 @@ function movePlayer(now) {
   const elapsed = lastFrameTime ? Math.min(now - lastFrameTime, 40) / 1000 : 1 / 60;
   lastFrameTime = now;
   const speed = Math.max(395, meadowSize.width * .9) * .576;
-  const hedgehogBefore = hedgehog.position;
-  if (hedgehog.pace) hedgehog.advance(elapsed, meadowSize);
+  if (hedgehogs.pace) hedgehogs.advance(elapsed, meadowSize);
   if (startledUntil && now >= startledUntil) clearReaction();
 
   let running = false;
@@ -600,7 +638,7 @@ function movePlayer(now) {
     activeMove ??= moves.shift();
     const move = activeMove;
     running = move ? followMove(move, speed * elapsed) : followKeys(speed * .7 * elapsed);
-    if (hedgehog.pace && now >= collisionGraceUntil && hedgehog.crossed(playerBefore, player, hedgehogBefore, meadowSize)) {
+    if (hedgehogs.pace && now >= collisionGraceUntil && hedgehogs.crossed(playerBefore, player, meadowSize)) {
       hitHedgehog(now);
       running = false;
     } else if (move && !activeMove) {
@@ -610,7 +648,7 @@ function movePlayer(now) {
   }
   renderPlayer(running, elapsed);
 
-  if (phase === "playing" && (hedgehog.pace || activeMove || moves.length || keysHeld.size)) {
+  if (phase === "playing" && (hedgehogs.pace || activeMove || moves.length || keysHeld.size)) {
     requestMotion();
   } else {
     lastFrameTime = 0;
@@ -673,7 +711,7 @@ function celebrate() {
   renderPause();
   const last = roundIndex === rounds.length - 1;
   celebrationMessage.textContent = completedRounds.size === rounds.length
-    ? "Все семь букетов собраны!"
+    ? "Все девять букетов собраны!"
     : "Ты собрала нужный букет.";
   nextRound.firstElementChild.textContent = last ? "Играть снова" : "Следующий раунд";
   nextRound.lastElementChild.className = last ? "icon icon-restart" : "icon icon-arrow";
@@ -681,7 +719,7 @@ function celebrate() {
   celebrationMom.classList.remove("is-hugging");
   bouquet.replaceChildren(...basket.map((color, index) => {
     const blossom = new Image();
-    const fan = index / (basket.length - 1) * 2 - 1;
+    const fan = basket.length > 1 ? index / (basket.length - 1) * 2 - 1 : 0;
     blossom.src = flowerImages[color].whole;
     blossom.alt = "";
     blossom.style.setProperty("--bloom-size", `${75 - Math.abs(fan) * 18}%`);
@@ -774,7 +812,7 @@ window.addEventListener("blur", () => keysHeld.clear());
 new ResizeObserver(measureMeadow).observe(meadow);
 narrow.addEventListener("change", () => {
   Object.assign(player, phase === "ready" ? startPosition() : limitWalk(player.x, player.y));
-  hedgehog.reset(rounds[roundIndex].hedgehogPace, narrow.matches);
+  resetHedgehogs();
   renderPlayer();
 });
 

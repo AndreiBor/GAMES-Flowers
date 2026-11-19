@@ -309,6 +309,7 @@ h1 {
 }
 
 .flower-count img { display: block; width: 30px; height: 30px; }
+.flower-count.target-total { min-height: 40px; padding-inline: 10px; }
 
 .meadow {
   --flower-size: clamp(48px, 5.6vw, 72px);
@@ -427,7 +428,7 @@ h1 {
 }
 
 /* Keep this wrapper out of the stacking order so flowers can straddle the hedgehog's layer. */
-.flowers { position: absolute; inset: 0; pointer-events: none; }
+.flowers, .hedgehogs { position: absolute; inset: 0; pointer-events: none; }
 
 .field-flower {
   position: absolute;
@@ -1101,6 +1102,14 @@ h1 {
   .basket { gap: 7px; }
 }
 
+@media (max-width: 840px) {
+  .game-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-bottom: 11px; }
+  .progress { display: contents; }
+  #round-label { font-size: .75rem; }
+  .round-steps { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); grid-column: 1 / -1; gap: 5px; }
+  .round-steps button { width: 100%; height: 44px; border-radius: 12px; }
+}
+
 @media (max-width: 680px) {
   .page-width { width: calc(100% - 28px); }
   .header-inner { min-height: 62px; }
@@ -1111,11 +1120,6 @@ h1 {
   .sound-button .icon { font-size: 1.32rem; }
   #sound-label { display: none; }
   .game { padding-block: 17px 23px; }
-  .game-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-bottom: 11px; }
-  .progress { display: contents; }
-  #round-label { font-size: .75rem; }
-  .round-steps { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-column: 1 / -1; gap: 5px; }
-  .round-steps button { width: 100%; height: 44px; border-radius: 12px; }
   .mission { gap: 9px; margin-bottom: 11px; padding: 9px; border-radius: 16px; }
   .listen { width: 44px; height: 44px; border-radius: 12px; }
   .mission p { font-size: .82rem; }
@@ -1171,6 +1175,10 @@ h1 {
   }
   .mission:has(.target-list li:nth-child(2)) .mission-text { grid-column: 2 / -1; }
   .mission:has(.target-list li:nth-child(2)) .listen { grid-row: span 2; }
+}
+
+@media (max-width: 450px) {
+  .round-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 }
 
 @media (max-width: 390px) {
