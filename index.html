@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#fbf9ff">
+    <meta name="description" content="Цветочная полянка — игра на счёт и цвета. Собери букет и подари его маме!">
+    <title>Цветочная полянка</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./game.js"></script>
+  </head>
+  <body>
+    <header class="page-header">
+      <div class="page-width header-inner">
+        <div class="brand">
+          <span class="brand-mark"><img id="brand-flower" alt="" width="33" height="33"></span>
+          <span>Цветочная полянка</span>
+        </div>
+        <button type="button" class="sound-button" id="sound" aria-pressed="true" aria-label="Звук">
+          <span class="icon icon-speaker" aria-hidden="true"></span>
+          <span id="sound-label">Звук включён</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="page-width game">
+      <div class="game-heading">
+        <h1>Сбор цветов</h1>
+        <div class="progress">
+          <span id="round-label">Раунд 1 из 4</span>
+          <ol class="round-steps" id="round-steps" aria-label="Раунды">
+            <li aria-current="step" aria-label="Раунд 1"><span>1</span></li>
+            <li aria-label="Раунд 2"><span>2</span></li>
+            <li aria-label="Раунд 3"><span>3</span></li>
+            <li aria-label="Раунд 4"><span>4</span></li>
+          </ol>
+        </div>
+      </div>
+
+      <section class="mission" aria-labelledby="task">
+        <button type="button" class="listen" id="listen" aria-label="Послушать задание" title="Послушать задание">
+          <span class="icon icon-speaker" aria-hidden="true"></span>
+        </button>
+        <div class="mission-text">
+          <h2 id="task">Собери 5 синих цветов</h2>
+          <p>Потом подари букет маме.</p>
+        </div>
+        <ul class="target-list" id="targets" aria-label="Цветы для букета"></ul>
+      </section>
+
+      <section class="meadow" id="meadow" tabindex="0" aria-label="Цветочная лужайка" aria-describedby="how-to-play" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Space">
+        <img class="meadow-art" src="./assets/meadow.webp" alt="" fetchpriority="high" width="1921" height="819">
+        <div class="butterfly" aria-hidden="true"><i></i><i></i></div>
+        <div id="flowers" class="flowers"></div>
+        <div class="girl" id="girl" data-pose="stand" aria-hidden="true">
+          <span class="ground-shadow"></span>
+          <div class="girl-poses">
+            <img src="./assets/characters/girl.webp" alt="" class="girl-stand" draggable="false">
+            <img src="./assets/characters/run-1.webp" alt="" class="girl-run-one" draggable="false">
+            <img src="./assets/characters/run-2.webp" alt="" class="girl-run-two" draggable="false">
+            <span class="carried-flowers" id="carried-flowers"></span>
+          </div>
+        </div>
+        <button type="button" id="mom" class="mom" aria-label="Подарить цветы маме">
+          <span class="mom-name" aria-hidden="true">Мама</span>
+          <span class="ground-shadow" aria-hidden="true"></span>
+          <img src="./assets/characters/mom.webp" alt="" draggable="false">
+        </button>
+        <div class="timer" id="timer" role="timer" aria-label="Осталось 2:00">
+          <span class="icon icon-clock" aria-hidden="true"></span>
+          <span id="time" aria-hidden="true">2:00</span>
+          <span class="timer-track" aria-hidden="true"></span>
+        </div>
+        <div class="feedback" id="feedback" role="status" aria-atomic="true"></div>
+      </section>
+
+      <div class="controls">
+        <div class="basket">
+          <span class="basket-icon" aria-hidden="true"><span class="icon icon-basket"></span></span>
+          <div class="basket-label">
+            <span>В корзинке</span>
+            <strong id="basket-total" role="status">0 цветов</strong>
+          </div>
+        </div>
+        <ul class="basket-flowers" id="basket-flowers" aria-label="Собранные цветы"></ul>
+        <p id="how-to-play" class="tip">
+          <span class="icon icon-tap" aria-hidden="true"></span>
+          Нажимай на цветы, чтобы собрать их.
+        </p>
+        <button type="button" class="primary-button" id="main-action">
+          <span class="icon icon-play" aria-hidden="true"></span>
+          <span>Начать игру</span>
+        </button>
+      </div>
+      <noscript><p>Для игры нужно включить JavaScript в браузере.</p></noscript>
+    </main>
+
+    <dialog id="celebration" class="celebration" aria-labelledby="celebration-title" aria-describedby="celebration-message">
+      <div class="celebration-card">
+        <div class="celebration-art" aria-hidden="true">
+          <span class="party-heart heart-left icon icon-heart"></span>
+          <span class="party-heart heart-right icon icon-heart"></span>
+          <span class="party-sparkle sparkle-left"></span>
+          <span class="party-sparkle sparkle-right"></span>
+          <div class="celebration-mom" id="celebration-mom">
+            <img class="smell-pose" src="./assets/characters/smell.webp" alt="">
+            <img class="hug-pose" src="./assets/characters/hug.webp" alt="">
+            <div class="bouquet" id="bouquet"></div>
+          </div>
+        </div>
+        <h2 id="celebration-title">Спасибо, доченька!</h2>
+        <p id="celebration-message">Ты собрала нужный букет.</p>
+        <button type="button" class="primary-button" id="next-round">
+          <span>Следующий раунд</span>
+          <span class="icon icon-arrow" aria-hidden="true"></span>
+        </button>
+      </div>
+    </dialog>
+
+    <audio id="voice" preload="auto" src="./assets/audio/round-1.mp3"></audio>
+  </body>
+</html>
