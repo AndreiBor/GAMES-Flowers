@@ -59,6 +59,11 @@ const actionButton = document.querySelector("#main-action");
 const feedback = document.querySelector("#feedback");
 const sound = document.querySelector("#sound");
 const soundLabel = document.querySelector("#sound-label");
+const soundSettings = document.querySelector("#sound-settings");
+const soundEnabled = document.querySelector("#sound-enabled");
+const voiceOptions = [...soundSettings.querySelectorAll('input[name="game-voice"]')];
+const previewButtons = [...soundSettings.querySelectorAll("[data-preview]")];
+const previewMessage = document.querySelector("#preview-message");
 const listen = document.querySelector("#listen");
 const voice = document.querySelector("#voice");
 const celebration = document.querySelector("#celebration");
@@ -72,7 +77,9 @@ let phase = "ready";
 let flowers = [];
 let basket = [];
 let muted = false;
+let selectedVoice = voiceOptions[0].value;
 let voiceClip = "";
+let settingsOpenedAt = null;
 let deadline = 0;
 let timerHandle = 0;
 let displayedTime = -1;
@@ -254,21 +261,42 @@ function showFeedback(message) {
   if (message) feedbackHandle = setTimeout(() => { feedback.textContent = ""; }, 4700);
 }
 
-function playVoice(clip) {
-  if (muted) return;
+function recordingURL(pack, clip) {
+  return new URL(`./assets/audio/${pack}/${clip}.mp3`, import.meta.url).href;
+}
+
+function playRecording(pack, clip) {
   voiceClip = clip;
-  const source = new URL(`./assets/audio/${clip}.mp3`, import.meta.url).href;
+  const source = recordingURL(pack, clip);
   voice.pause();
   if (voice.src === source) voice.currentTime = 0;
   else voice.src = source;
-  voice.play().catch(() => listen.classList.remove("is-speaking"));
+  return voice.play();
+}
+
+function playVoice(clip) {
+  if (!muted) playRecording(selectedVoice, clip).catch(() => {});
+}
+
+function restoreVoice() {
+  try {
+    const saved = localStorage.getItem("flower-meadow-voice");
+    const option = voiceOptions.find(input => input.value === saved);
+    if (option) {
+      option.checked = true;
+      selectedVoice = option.value;
+    }
+  } catch {
+    // Storage can be disabled. The selected voice still works for this visit.
+  }
+  voice.src = recordingURL(selectedVoice, rounds[0].voice);
 }
 
 function updateSound() {
-  sound.setAttribute("aria-pressed", String(!muted));
+  soundEnabled.checked = !muted;
+  sound.classList.toggle("is-muted", muted);
   sound.firstElementChild.className = muted ? "icon icon-muted" : "icon icon-speaker";
-  soundLabel.textContent = muted ? "Звук выключен" : "Звук включён";
-  if (muted) voice.pause();
+  soundLabel.textContent = muted ? "Звук выключен" : "Звук";
 }
 
 function prepareRound() {
@@ -307,7 +335,7 @@ function retryAttempt(message, clip) {
 }
 
 function checkTime(now = performance.now()) {
-  if (phase !== "playing") return false;
+  if (phase !== "playing" || settingsOpenedAt !== null) return false;
   const remaining = Math.ceil((deadline - now) / 1000);
   if (remaining <= 0) {
     retryAttempt("Время вышло. Попробуй ещё раз!", "expired");
@@ -504,15 +532,68 @@ function celebrate() {
   celebration.showModal();
   setTimeout(() => {
     celebrationMom.classList.add("is-hugging");
-    playVoice("thanks");
-    setTimeout(() => nextRound.setAttribute("aria-disabled", "false"), muted ? 450 : 1800);
+    playThanks();
   }, reducedMotion.matches ? 100 : 1050);
 }
 
+function playThanks() {
+  if (muted) {
+    setTimeout(() => nextRound.setAttribute("aria-disabled", "false"), 450);
+    return;
+  }
+  function allowNextRound() {
+    clearTimeout(fallback);
+    voice.removeEventListener("ended", allowNextRound);
+    nextRound.setAttribute("aria-disabled", "false");
+  }
+  const fallback = setTimeout(allowNextRound, 7000);
+  voice.addEventListener("ended", allowNextRound);
+  playRecording(selectedVoice, "thanks").catch(allowNextRound);
+}
+
 sound.addEventListener("click", () => {
-  muted = !muted;
+  settingsOpenedAt = performance.now();
+  cancelAnimationFrame(motionFrame);
+  motionFrame = 0;
+  lastFrameTime = 0;
+  keysHeld.clear();
+  renderPlayer();
+  voice.pause();
+  previewMessage.textContent = "";
+  soundSettings.showModal();
+  voiceOptions.find(option => option.checked).focus();
+});
+soundSettings.addEventListener("close", () => {
+  voice.pause();
+  if (phase === "playing") deadline += performance.now() - settingsOpenedAt;
+  settingsOpenedAt = null;
+  if (activeMove || moves.length) requestMotion();
+});
+soundEnabled.addEventListener("change", () => {
+  muted = !soundEnabled.checked;
+  if (muted) voice.pause();
   updateSound();
 });
+for (const option of voiceOptions) {
+  option.addEventListener("change", () => {
+    selectedVoice = option.value;
+    try {
+      localStorage.setItem("flower-meadow-voice", selectedVoice);
+    } catch {
+      // The setting still applies in this tab.
+    }
+  });
+}
+for (const button of previewButtons) {
+  button.addEventListener("click", () => {
+    previewMessage.textContent = "";
+    playRecording(button.dataset.preview, "sample").catch(error => {
+      if (error.name !== "AbortError" && soundSettings.open) {
+        previewMessage.textContent = "Не удалось воспроизвести голос. Попробуй ещё раз.";
+      }
+    });
+  });
+}
 listen.addEventListener("click", () => {
   muted = false;
   updateSound();
@@ -520,9 +601,15 @@ listen.addEventListener("click", () => {
 });
 voice.addEventListener("playing", () => {
   listen.classList.toggle("is-speaking", voiceClip === rounds[roundIndex].voice);
+  for (const button of previewButtons) {
+    button.classList.toggle("is-speaking", voice.src === recordingURL(button.dataset.preview, "sample"));
+  }
 });
 for (const event of ["pause", "ended", "error"]) {
-  voice.addEventListener(event, () => listen.classList.remove("is-speaking"));
+  voice.addEventListener(event, () => {
+    listen.classList.remove("is-speaking");
+    for (const button of previewButtons) button.classList.remove("is-speaking");
+  });
 }
 
 actionButton.addEventListener("click", startOrDeliver);
@@ -538,7 +625,7 @@ meadow.addEventListener("click", event => {
 });
 
 window.addEventListener("keydown", event => {
-  if (phase === "celebrating" || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (settingsOpenedAt !== null || phase === "celebrating" || event.altKey || event.ctrlKey || event.metaKey) return;
   if (Object.hasOwn(arrows, event.key)) {
     event.preventDefault();
     startRound();
@@ -574,3 +661,4 @@ document.querySelector("#brand-flower").src = logoFlower;
 document.querySelector('link[rel="icon"]').href = logoFlower;
 measureMeadow();
 prepareRound();
+restoreVoice();

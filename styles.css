@@ -133,7 +133,70 @@ button:focus-visible, [tabindex]:focus-visible {
 }
 
 .sound-button:hover { background: #f4ecff; }
-.sound-button[aria-pressed="false"] { color: var(--muted); }
+.sound-button.is-muted { color: var(--muted); }
+
+.sound-settings {
+  width: min(390px, calc(100% - 26px));
+  max-height: calc(100% - 26px);
+  padding: clamp(16px, 5vw, 25px);
+  border: 1px solid var(--edge);
+  border-radius: 24px;
+  background: #fffcff;
+  color: var(--ink);
+  box-shadow: 0 16px 55px #33214944;
+}
+
+.sound-settings::backdrop { background: #30204476; backdrop-filter: blur(2px); }
+.sound-settings h2 { margin: 0 0 10px; font-size: 1.8rem; font-weight: 950; }
+
+.sound-switch, .voice-option label {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 9px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.sound-settings input {
+  width: 19px;
+  height: 19px;
+  margin: 0;
+  accent-color: var(--violet);
+}
+
+.voice-options { display: grid; gap: 6px; min-width: 0; margin: 10px 0 0; padding: 0; border: 0; }
+.voice-options legend { margin-bottom: 8px; padding: 0; color: var(--muted); font-weight: 850; }
+
+.voice-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 10px;
+  border: 1px solid var(--edge);
+  border-radius: 13px;
+  background: #fff;
+}
+
+.voice-option:has(input:checked) { border-color: #d6c3f0; background: #f3ebff; }
+.voice-option label { flex: 1; }
+
+.voice-preview {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  place-items: center;
+  border: 1px solid #e5d7f5;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--violet-dark);
+}
+
+.voice-preview:hover, .voice-preview.is-speaking { background: #e8d9fb; }
+.preview-message { margin: 8px 0 0; color: var(--muted); font-size: .9rem; }
+.preview-message:empty { display: none; }
+.sound-settings form { display: flex; justify-content: end; margin-top: 15px; }
 
 .game { padding-block: 24px 32px; }
 
