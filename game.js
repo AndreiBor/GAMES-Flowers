@@ -262,7 +262,7 @@ function showFeedback(message) {
 }
 
 function recordingURL(pack, clip) {
-  return new URL(`./assets/audio/${pack}/${clip}.mp3`, import.meta.url).href;
+  return new URL(`./assets/audio/${pack}/${clip}.mp3?v=2`, import.meta.url).href;
 }
 
 function playRecording(pack, clip) {
@@ -533,7 +533,7 @@ function celebrate() {
   setTimeout(() => {
     celebrationMom.classList.add("is-hugging");
     playThanks();
-  }, reducedMotion.matches ? 100 : 1050);
+  }, reducedMotion.matches ? 100 : 400);
 }
 
 function playThanks() {
