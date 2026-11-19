@@ -636,7 +636,8 @@ h1 {
 .girl-poses > img { visibility: hidden; }
 .girl[data-pose="stand"] .girl-stand,
 .girl[data-pose="run-1"] .girl-run-one,
-.girl[data-pose="run-2"] .girl-run-two { visibility: visible; }
+.girl[data-pose="run-2"] .girl-run-two,
+.girl[data-pose="run-3"] .girl-run-three { visibility: visible; }
 
 .carried-flowers {
   position: absolute;
@@ -648,7 +649,8 @@ h1 {
 }
 
 .girl[data-pose="run-1"] .carried-flowers { top: 61%; left: 16%; }
-.girl[data-pose="run-2"] .carried-flowers { top: 63%; left: 17%; }
+.girl[data-pose="run-2"] .carried-flowers { top: 63%; left: 14%; }
+.girl[data-pose="run-3"] .carried-flowers { top: 64%; left: 12%; }
 
 .carried-flowers img {
   position: absolute;

@@ -2,6 +2,8 @@ import { flowerImages, flowerTypes, logoFlower } from "./flower-art.js";
 import { Hedgehog, groundLayer } from "./hedgehog.js?v=5";
 
 const ROUND_SECONDS = 120;
+const RUN_POSES = ["run-1", "run-2", "run-3", "run-2"];
+const RUN_FRAME_SECONDS = .09;
 const rounds = [
   {
     task: "Собери 5 синих цветов",
@@ -124,6 +126,7 @@ let deliveryPending = false;
 let activeMove = null;
 let motionFrame = 0;
 let lastFrameTime = 0;
+let strideTime = 0;
 let startledUntil = 0;
 let collisionGraceUntil = 0;
 const moves = [];
@@ -242,13 +245,16 @@ function measureMeadow() {
   };
 }
 
-function renderPlayer(running = false, now = 0) {
+function renderPlayer(running = false, elapsed = 0) {
   girl.style.setProperty("--girl-x", `${player.x}%`);
   girl.style.setProperty("--girl-y", `${player.y}%`);
   girl.style.setProperty("--facing", player.direction);
   const showStride = running && !reducedMotion.matches;
-  girl.style.setProperty("--hop", showStride ? `${-Math.abs(Math.sin(now / 75)) * 5}px` : "0px");
-  const pose = showStride ? `run-${1 + Math.floor(now / 105) % 2}` : "stand";
+  const cycle = RUN_POSES.length * RUN_FRAME_SECONDS;
+  strideTime = showStride ? (strideTime + elapsed) % cycle : 0;
+  const pose = showStride ? RUN_POSES[Math.floor(strideTime / RUN_FRAME_SECONDS)] : "stand";
+  const hop = showStride ? -Math.abs(Math.cos(strideTime / cycle * 2 * Math.PI)) * 3.5 : 0;
+  girl.style.setProperty("--hop", `${hop}px`);
   if (girl.dataset.pose !== pose) girl.dataset.pose = pose;
 }
 
@@ -541,7 +547,9 @@ function moveBy(dx, dy) {
     player.x + dx / meadowSize.width * 100,
     player.y + dy / meadowSize.height * 100,
   );
+  const moved = target.x !== player.x || target.y !== player.y;
   Object.assign(player, target);
+  return moved;
 }
 
 function moveDestination(move) {
@@ -555,8 +563,7 @@ function followMove(move, step) {
   const delta = pixelsBetween(player, destination);
   const distance = Math.hypot(delta.x, delta.y);
   if (distance > step) {
-    moveBy(delta.x * step / distance, delta.y * step / distance);
-    return true;
+    return moveBy(delta.x * step / distance, delta.y * step / distance);
   }
   if (Math.abs(delta.x) > 1) player.direction = Math.sign(delta.x);
   Object.assign(player, destination);
@@ -573,8 +580,7 @@ function followKeys(step) {
   }
   const magnitude = Math.hypot(dx, dy);
   if (!magnitude) return false;
-  moveBy(dx * step / magnitude, dy * step / magnitude);
-  return true;
+  return moveBy(dx * step / magnitude, dy * step / magnitude);
 }
 
 function movePlayer(now) {
@@ -582,7 +588,7 @@ function movePlayer(now) {
   if (!checkTime(now)) return;
   const elapsed = lastFrameTime ? Math.min(now - lastFrameTime, 40) / 1000 : 1 / 60;
   lastFrameTime = now;
-  const speed = Math.max(395, meadowSize.width * .9) * .9;
+  const speed = Math.max(395, meadowSize.width * .9) * .72;
   const hedgehogBefore = hedgehog.position;
   if (hedgehog.pace) hedgehog.advance(elapsed, meadowSize);
   if (startledUntil && now >= startledUntil) clearReaction();
@@ -601,7 +607,7 @@ function movePlayer(now) {
       if (move.kind === "deliver") deliver();
     }
   }
-  renderPlayer(running, now);
+  renderPlayer(running, elapsed);
 
   if (phase === "playing" && (hedgehog.pace || activeMove || moves.length || keysHeld.size)) {
     requestMotion();
