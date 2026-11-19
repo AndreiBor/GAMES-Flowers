@@ -49,14 +49,14 @@ const rounds = [
     leaveOnMeadow: 3,
     voice: "round-8",
     hedgehogPace: FINAL_HEDGEHOG_PACE,
-    hedgehogCount: 3,
+    hedgehogCount: 2,
   },
   {
-    task: "Собери один цветок жёлтого цвета",
-    target: { yellow: 1 },
+    task: "Собери два цветка жёлтого цвета",
+    target: { yellow: 2 },
     voice: "round-9",
     hedgehogPace: FINAL_HEDGEHOG_PACE,
-    hedgehogCount: 7,
+    hedgehogCount: 4,
   },
 ];
 
@@ -348,7 +348,7 @@ function showFeedback(message) {
 }
 
 function recordingURL(clip) {
-  return new URL(`./assets/audio/gentle/${clip}.mp3?v=6`, import.meta.url).href;
+  return new URL(`./assets/audio/gentle/${clip}.mp3?v=7`, import.meta.url).href;
 }
 
 function playRecording(clip) {
