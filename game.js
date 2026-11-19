@@ -35,13 +35,13 @@ const rounds = [
     task: "Собери все цветы любого одного цвета",
     goal: "one-color",
     voice: "round-6",
-    hedgehogPace: 1.26,
+    hedgehogPace: 1.638,
   },
   {
     task: "Собери все цветы, кроме жёлтых",
     goal: "no-yellow",
     voice: "round-7",
-    hedgehogPace: 1.52,
+    hedgehogPace: 2.457,
   },
 ];
 
