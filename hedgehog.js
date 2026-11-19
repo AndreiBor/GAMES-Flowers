@@ -1,6 +1,10 @@
 const wideTrail = [[24, 58], [43, 76], [65, 57], [74, 81], [51, 91], [31, 77]];
 const phoneTrail = [[27, 65], [45, 86], [67, 62], [79, 82], [57, 94], [28, 87]];
 
+export function groundLayer(y) {
+  return Math.floor(y * 100);
+}
+
 export class Hedgehog {
   constructor(sprite, mushroomBed) {
     this.sprite = sprite;
@@ -58,6 +62,7 @@ export class Hedgehog {
   render() {
     this.sprite.style.left = `${this.position.x}%`;
     this.sprite.style.top = `${this.position.y}%`;
+    this.sprite.style.zIndex = groundLayer(this.position.y);
   }
 
   crossed(playerBefore, playerAfter, hedgehogBefore, { width, height }) {

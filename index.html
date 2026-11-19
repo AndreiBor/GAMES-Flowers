@@ -7,8 +7,8 @@
     <meta name="description" content="Цветочная полянка — игра на счёт и цвета. Собери букет и подари его маме!">
     <title>Цветочная полянка</title>
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="./styles.css?v=3">
-    <script type="module" src="./game.js?v=3"></script>
+    <link rel="stylesheet" href="./styles.css?v=4">
+    <script type="module" src="./game.js?v=4"></script>
   </head>
   <body>
     <header class="page-header">
@@ -69,11 +69,18 @@
           <span class="ground-shadow" aria-hidden="true"></span>
           <img src="./assets/characters/mom.webp" alt="" draggable="false">
         </button>
-        <div class="timer" id="timer" role="timer" aria-label="Осталось 2:00">
-          <span class="icon icon-clock" aria-hidden="true"></span>
-          <span id="time" aria-hidden="true">2:00</span>
-          <span class="timer-track" aria-hidden="true"></span>
+        <div class="game-hud">
+          <div class="timer" id="timer" role="timer" aria-label="Осталось 2:00">
+            <span class="icon icon-clock" aria-hidden="true"></span>
+            <span id="time" aria-hidden="true">2:00</span>
+            <span class="timer-track" aria-hidden="true"></span>
+          </div>
+          <button class="pause-button" id="pause-game" type="button" aria-keyshortcuts="P" disabled>
+            <span class="pause-symbol" aria-hidden="true"></span>
+            <span id="pause-label">Пауза</span>
+          </button>
         </div>
+        <div class="pause-shade" aria-hidden="true"><span>Пауза</span></div>
         <div class="feedback" id="feedback" role="status" aria-atomic="true"></div>
       </section>
 

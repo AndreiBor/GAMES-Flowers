@@ -1,5 +1,5 @@
 import { flowerImages, flowerTypes, logoFlower } from "./flower-art.js";
-import { Hedgehog } from "./hedgehog.js";
+import { Hedgehog, groundLayer } from "./hedgehog.js?v=4";
 
 const ROUND_SECONDS = 120;
 const rounds = [
@@ -69,14 +69,20 @@ const hedgehog = new Hedgehog(document.querySelector("#hedgehog"), document.quer
 const mom = document.querySelector("#mom");
 const timer = document.querySelector("#timer");
 const timeText = document.querySelector("#time");
+const pauseButton = document.querySelector("#pause-game");
+const pauseLabel = document.querySelector("#pause-label");
 const task = document.querySelector("#task");
 const missionHint = document.querySelector("#mission-hint");
 const movementHint = document.querySelector("#movement-hint");
 const targets = document.querySelector("#targets");
 const roundLabel = document.querySelector("#round-label");
-const roundSteps = rounds.map(() => {
+const roundSteps = rounds.map((_, index) => {
   const step = document.createElement("li");
-  step.append(document.createElement("span"));
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = index + 1;
+  button.addEventListener("click", () => launchRound(index));
+  step.append(button);
   return step;
 });
 document.querySelector("#round-steps").replaceChildren(...roundSteps);
@@ -104,11 +110,13 @@ let roundTarget;
 let basket = [];
 let muted = false;
 let voiceClip = "";
-let settingsOpenedAt = null;
+let pauseRequested = false;
+let pausedAt = null;
+let resumeVoice = false;
 let deadline = 0;
 let timerHandle = 0;
 let displayedTime = -1;
-let feedbackHandle = 0;
+let feedbackExpires = 0;
 let player;
 let meadowSize;
 let momPosition;
@@ -120,6 +128,7 @@ let startledUntil = 0;
 let collisionGraceUntil = 0;
 const moves = [];
 const keysHeld = new Set();
+const completedRounds = new Set();
 const arrows = {
   ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1],
 };
@@ -173,15 +182,12 @@ function renderBasket() {
 function renderProgress() {
   roundLabel.textContent = `Раунд ${roundIndex + 1} из ${rounds.length}`;
   roundSteps.forEach((step, index) => {
-    const done = index < roundIndex || (index === roundIndex && phase === "celebrating");
-    step.classList.toggle("is-done", done);
-    if (index === roundIndex && !done) step.setAttribute("aria-current", "step");
-    else step.removeAttribute("aria-current");
-    step.setAttribute("aria-label", `Раунд ${index + 1}${done ? ", пройден" : ""}`);
-    const mark = step.firstElementChild;
-    mark.className = done ? "icon icon-check" : "";
-    mark.textContent = done ? "" : index + 1;
-    mark.setAttribute("aria-hidden", "true");
+    const button = step.firstElementChild;
+    const done = completedRounds.has(index);
+    button.classList.toggle("is-done", done);
+    if (index === roundIndex) button.setAttribute("aria-current", "step");
+    else button.removeAttribute("aria-current");
+    button.setAttribute("aria-label", `Раунд ${index + 1}${done ? ", пройден" : ""}`);
   });
 }
 
@@ -209,6 +215,8 @@ function makeFlower([x, y], index) {
   button.style.setProperty("--y", `${y}%`);
   button.style.setProperty("--mx", `${mobilePoint.x}%`);
   button.style.setProperty("--my", `${mobilePoint.y}%`);
+  button.style.setProperty("--ground-layer", groundLayer(y));
+  button.style.setProperty("--phone-ground-layer", groundLayer(mobilePoint.y));
   button.style.setProperty("--depth", (.83 + (y - 50) / 165).toFixed(2));
   button.style.setProperty("--sprout-delay", `${(index % 8) * 35}ms`);
   const art = new Image();
@@ -244,13 +252,17 @@ function renderPlayer(running = false, now = 0) {
   if (girl.dataset.pose !== pose) girl.dataset.pose = pose;
 }
 
-function clearMoves() {
+function stopMotion() {
   cancelAnimationFrame(motionFrame);
   motionFrame = 0;
   lastFrameTime = 0;
+  keysHeld.clear();
+}
+
+function clearMoves() {
+  stopMotion();
   activeMove = null;
   moves.length = 0;
-  keysHeld.clear();
   deliveryPending = false;
 }
 
@@ -299,9 +311,8 @@ function displayTime(seconds) {
 }
 
 function showFeedback(message) {
-  clearTimeout(feedbackHandle);
   feedback.textContent = message;
-  if (message) feedbackHandle = setTimeout(() => { feedback.textContent = ""; }, 4700);
+  feedbackExpires = message ? performance.now() + 4700 : 0;
 }
 
 function recordingURL(clip) {
@@ -328,9 +339,53 @@ function updateSound() {
   soundLabel.textContent = muted ? "Звук выключен" : "Звук";
 }
 
+function renderPause() {
+  const paused = pausedAt !== null;
+  meadow.classList.toggle("is-paused", paused);
+  pauseButton.disabled = phase !== "playing";
+  pauseButton.classList.toggle("is-resume", pauseRequested);
+  pauseLabel.textContent = pauseRequested ? "Продолжить" : "Пауза";
+  listen.disabled = paused;
+}
+
+function syncPause() {
+  if (phase !== "playing") return;
+  const shouldPause = pauseRequested || soundSettings.open;
+  if (shouldPause === (pausedAt !== null)) return;
+  const now = performance.now();
+  if (shouldPause) {
+    pausedAt = now;
+    stopMotion();
+    resumeVoice = !voice.paused;
+    voice.pause();
+  } else {
+    const elapsed = now - pausedAt;
+    pausedAt = null;
+    deadline += elapsed;
+    if (feedbackExpires) feedbackExpires += elapsed;
+    if (startledUntil) startledUntil += elapsed;
+    if (collisionGraceUntil) collisionGraceUntil += elapsed;
+    if (resumeVoice && !muted) voice.play().catch(() => {});
+    resumeVoice = false;
+    if (hedgehog.pace || activeMove || moves.length) requestMotion();
+  }
+  renderPause();
+}
+
+function togglePause() {
+  if (phase !== "playing" || soundSettings.open) return;
+  pauseRequested = !pauseRequested;
+  syncPause();
+}
+
 function prepareRound() {
   clearInterval(timerHandle);
   phase = "ready";
+  pauseRequested = false;
+  pausedAt = null;
+  resumeVoice = false;
+  voice.pause();
+  renderPause();
   const round = rounds[roundIndex];
   resetField();
   roundTarget = round.target ?? countColors(flowers.map(flower => flower.color));
@@ -364,8 +419,15 @@ function startRound() {
   phase = "playing";
   restartClock();
   renderAction();
+  renderPause();
   playVoice(rounds[roundIndex].voice);
   if (hedgehog.pace) requestMotion();
+}
+
+function launchRound(index) {
+  roundIndex = index;
+  prepareRound();
+  startRound();
 }
 
 function retryAttempt(message, clip) {
@@ -377,7 +439,8 @@ function retryAttempt(message, clip) {
 }
 
 function checkTime(now = performance.now()) {
-  if (phase !== "playing" || settingsOpenedAt !== null) return false;
+  if (phase !== "playing" || pausedAt !== null) return false;
+  if (feedbackExpires && now >= feedbackExpires) showFeedback("");
   const remaining = Math.ceil((deadline - now) / 1000);
   if (remaining <= 0) {
     retryAttempt("Время вышло. Попробуй ещё раз!", "expired");
@@ -598,9 +661,13 @@ function celebrate() {
   clearInterval(timerHandle);
   clearMoves();
   showFeedback("");
+  completedRounds.add(roundIndex);
   renderProgress();
+  renderPause();
   const last = roundIndex === rounds.length - 1;
-  celebrationMessage.textContent = last ? "Все семь букетов собраны!" : "Ты собрала нужный букет.";
+  celebrationMessage.textContent = completedRounds.size === rounds.length
+    ? "Все семь букетов собраны!"
+    : "Ты собрала нужный букет.";
   nextRound.firstElementChild.textContent = last ? "Играть снова" : "Следующий раунд";
   nextRound.lastElementChild.className = last ? "icon icon-restart" : "icon icon-arrow";
   nextRound.setAttribute("aria-disabled", "true");
@@ -639,21 +706,11 @@ function playThanks() {
 }
 
 sound.addEventListener("click", () => {
-  settingsOpenedAt = performance.now();
-  cancelAnimationFrame(motionFrame);
-  motionFrame = 0;
-  lastFrameTime = 0;
-  keysHeld.clear();
-  renderPlayer();
-  voice.pause();
   soundSettings.showModal();
+  if (phase === "ready") voice.pause();
+  syncPause();
 });
-soundSettings.addEventListener("close", () => {
-  voice.pause();
-  if (phase === "playing") deadline += performance.now() - settingsOpenedAt;
-  settingsOpenedAt = null;
-  if (phase === "playing" && (hedgehog.pace || activeMove || moves.length)) requestMotion();
-});
+soundSettings.addEventListener("close", syncPause);
 soundEnabled.addEventListener("change", () => {
   muted = !soundEnabled.checked;
   if (muted) voice.pause();
@@ -672,6 +729,7 @@ for (const event of ["pause", "ended", "error"]) {
 }
 
 actionButton.addEventListener("click", startOrDeliver);
+pauseButton.addEventListener("click", togglePause);
 mom.addEventListener("click", queueDelivery);
 meadow.addEventListener("click", event => {
   if (event.target !== meadow || deliveryPending || startledUntil || !checkTime()) return;
@@ -684,7 +742,13 @@ meadow.addEventListener("click", event => {
 });
 
 window.addEventListener("keydown", event => {
-  if (settingsOpenedAt !== null || phase === "celebrating" || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (soundSettings.open || phase === "celebrating" || event.altKey || event.ctrlKey || event.metaKey) return;
+  if (event.code === "KeyP" && !event.repeat && phase === "playing") {
+    event.preventDefault();
+    togglePause();
+    return;
+  }
+  if (pausedAt !== null) return;
   if (Object.hasOwn(arrows, event.key)) {
     event.preventDefault();
     startRound();
@@ -711,9 +775,9 @@ celebration.addEventListener("cancel", event => event.preventDefault());
 nextRound.addEventListener("click", () => {
   if (nextRound.getAttribute("aria-disabled") === "true") return;
   celebration.close();
-  roundIndex = (roundIndex + 1) % rounds.length;
-  prepareRound();
-  startRound();
+  const index = (roundIndex + 1) % rounds.length;
+  if (!index) completedRounds.clear();
+  launchRound(index);
   meadow.focus({ preventScroll: true });
 });
 

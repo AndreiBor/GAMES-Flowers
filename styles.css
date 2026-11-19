@@ -203,30 +203,33 @@ h1 {
   list-style: none;
 }
 
-.round-steps li {
+.round-steps button {
   display: grid;
-  width: 29px;
-  height: 29px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
   place-items: center;
   border: 1px solid #e4d9ef;
   border-radius: 50%;
   background: #fff;
   color: #66557c;
-  font-size: .81rem;
+  font-size: .88rem;
   line-height: 1;
 }
 
-.round-steps li[aria-current="step"] {
+.round-steps button:hover { box-shadow: 0 0 0 3px #ede3f9; }
+
+.round-steps button.is-done {
+  border-color: #d6e9c0;
+  background: #edf7e3;
+  color: #3a6331;
+}
+
+.round-steps button[aria-current="step"] {
   border-color: #6c49ad;
   background: #6c49ad;
   color: white;
   box-shadow: 0 0 0 3px #ede3f9;
-}
-
-.round-steps li.is-done {
-  border-color: #d6e9c0;
-  background: #edf7e3;
-  color: #3a6331;
 }
 
 .mission {
@@ -344,11 +347,12 @@ h1 {
   to { opacity: 1; transform: scale(1); }
 }
 
+/* Keep this wrapper out of the stacking order so flowers can straddle the hedgehog's layer. */
 .flowers { position: absolute; inset: 0; pointer-events: none; }
 
 .field-flower {
   position: absolute;
-  z-index: 1;
+  z-index: var(--ground-layer);
   left: var(--x);
   top: var(--y);
   display: grid;
@@ -402,7 +406,7 @@ h1 {
 
 .girl, .mom {
   position: absolute;
-  z-index: 2;
+  z-index: 10000;
   transform: translate(-50%, -100%);
 }
 
@@ -448,7 +452,7 @@ h1 {
 
 .dropped-flowers {
   position: absolute;
-  z-index: 2;
+  z-index: 10000;
   pointer-events: none;
 }
 
@@ -498,7 +502,6 @@ h1 {
 
 .hedgehog {
   position: absolute;
-  z-index: 2;
   width: clamp(59px, 8.2vw, 100px);
   transform: translate(-50%, -100%);
   pointer-events: none;
@@ -602,11 +605,19 @@ h1 {
   content: "";
 }
 
-.timer {
+.game-hud {
   position: absolute;
-  z-index: 3;
+  z-index: 10003;
   top: 16px;
   right: 16px;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  gap: 9px;
+}
+
+.timer {
+  position: relative;
   display: flex;
   min-width: 108px;
   height: 53px;
@@ -651,9 +662,68 @@ h1 {
 .timer.is-low, .timer.is-low .icon { color: #9d3a46; }
 .timer.is-low .timer-track::before { background: #cb6571; }
 
+.pause-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid #f4ecf7;
+  border-radius: 12px;
+  background: #fffdf6;
+  color: #483569;
+  font-size: .9rem;
+  font-weight: 900;
+  box-shadow: 0 3px 10px #35462826;
+}
+
+.pause-button:hover:not(:disabled) { background: #f5eefe; }
+.pause-button:disabled { opacity: .66; cursor: default; }
+
+.pause-symbol {
+  width: 11px;
+  height: 13px;
+  border-inline: 3px solid currentColor;
+  border-radius: 2px;
+}
+
+.pause-button.is-resume .pause-symbol {
+  width: 0;
+  height: 0;
+  border: 7px solid transparent;
+  border-right: 0;
+  border-left: 10px solid currentColor;
+  border-radius: 0;
+}
+
+.pause-shade {
+  position: absolute;
+  z-index: 10002;
+  inset: 0;
+  display: none;
+  place-items: center;
+  background: #39235055;
+  pointer-events: none;
+}
+
+.meadow.is-paused .pause-shade { display: grid; }
+.meadow.is-paused * { animation-play-state: paused !important; }
+
+.pause-shade span {
+  padding: 9px 22px;
+  border: 1px solid #e8d9fb;
+  border-radius: 16px;
+  background: #fffdf6;
+  color: #483569;
+  font-size: 1.55rem;
+  font-weight: 950;
+  box-shadow: 0 3px 17px #35224744;
+}
+
 .feedback {
   position: absolute;
-  z-index: 4;
+  z-index: 10001;
   top: 85px;
   left: 50%;
   width: max-content;
@@ -929,10 +999,11 @@ h1 {
   .sound-button .icon { font-size: 1.32rem; }
   #sound-label { display: none; }
   .game { padding-block: 17px 23px; }
-  .game-heading { gap: 8px; margin-bottom: 11px; }
-  .progress { flex-direction: column; align-items: end; gap: 4px; font-size: .75rem; }
-  .round-steps li { width: 21px; height: 21px; font-size: .69rem; }
-  .round-steps { gap: 4px; }
+  .game-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-bottom: 11px; }
+  .progress { display: contents; }
+  #round-label { font-size: .75rem; }
+  .round-steps { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); grid-column: 1 / -1; gap: 5px; }
+  .round-steps button { width: 100%; height: 44px; border-radius: 12px; }
   .mission { gap: 9px; margin-bottom: 11px; padding: 9px; border-radius: 16px; }
   .listen { width: 44px; height: 44px; border-radius: 12px; }
   .mission p { font-size: .82rem; }
@@ -953,9 +1024,10 @@ h1 {
   }
 
   .meadow-art { object-position: 59% center; }
-  .field-flower { left: var(--mx); top: var(--my); }
+  .field-flower { left: var(--mx); top: var(--my); z-index: var(--phone-ground-layer); }
   .girl { left: var(--girl-x, 16%); top: var(--girl-y, 43.5%); }
-  .timer { top: 10px; right: auto; left: 10px; height: 47px; min-width: 91px; font-size: 1.3rem; }
+  .game-hud { top: 10px; right: auto; left: 10px; flex-direction: row; }
+  .timer { height: 47px; min-width: 91px; font-size: 1.3rem; }
   .feedback { top: 63px; }
   .mom-name { bottom: calc(100% + 4px); padding: 3px 8px; }
 
@@ -985,7 +1057,15 @@ h1 {
 }
 
 @media (max-width: 390px) {
-  .round-steps { display: none; }
+  .pause-button { min-width: 44px; padding: 0; }
+  #pause-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 }
 
 @media (max-width: 365px) {
