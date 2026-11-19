@@ -64,7 +64,8 @@ export class Hedgehog {
   }
 
   renderStride() {
-    const swing = Math.sin(this.stride);
+    // The planted paws push backward. The rig mirrors this motion when turning.
+    const swing = -Math.sin(this.stride);
     const lift = Math.cos(this.stride);
     this.sprite.style.setProperty("--paw-swing", `${swing * 28}deg`);
     this.sprite.style.setProperty("--paw-lift", `${-Math.max(0, lift) * 20}%`);

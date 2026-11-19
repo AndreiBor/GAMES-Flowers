@@ -485,9 +485,10 @@ h1 {
 
 .girl, .mom {
   position: absolute;
-  z-index: 10000;
   transform: translate(-50%, -100%);
 }
+
+.mom { z-index: 10000; }
 
 .girl {
   left: var(--girl-x, 9.6%);

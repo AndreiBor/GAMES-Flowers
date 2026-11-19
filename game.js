@@ -1,5 +1,5 @@
 import { flowerImages, flowerTypes, logoFlower } from "./flower-art.js";
-import { Hedgehog, groundLayer } from "./hedgehog.js?v=5";
+import { Hedgehog, groundLayer } from "./hedgehog.js?v=6";
 
 const ROUND_SECONDS = 120;
 const RUN_POSES = ["run-1", "run-2", "run-3", "run-2"];
@@ -249,6 +249,7 @@ function renderPlayer(running = false, elapsed = 0) {
   girl.style.setProperty("--girl-x", `${player.x}%`);
   girl.style.setProperty("--girl-y", `${player.y}%`);
   girl.style.setProperty("--facing", player.direction);
+  girl.style.zIndex = groundLayer(player.y);
   const showStride = running && !reducedMotion.matches;
   const cycle = RUN_POSES.length * RUN_FRAME_SECONDS;
   strideTime = showStride ? (strideTime + elapsed) % cycle : 0;
@@ -588,7 +589,7 @@ function movePlayer(now) {
   if (!checkTime(now)) return;
   const elapsed = lastFrameTime ? Math.min(now - lastFrameTime, 40) / 1000 : 1 / 60;
   lastFrameTime = now;
-  const speed = Math.max(395, meadowSize.width * .9) * .72;
+  const speed = Math.max(395, meadowSize.width * .9) * .576;
   const hedgehogBefore = hedgehog.position;
   if (hedgehog.pace) hedgehog.advance(elapsed, meadowSize);
   if (startledUntil && now >= startledUntil) clearReaction();
