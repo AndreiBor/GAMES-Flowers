@@ -316,7 +316,7 @@ function showFeedback(message) {
 }
 
 function recordingURL(clip) {
-  return new URL(`./assets/audio/gentle/${clip}.mp3?v=5`, import.meta.url).href;
+  return new URL(`./assets/audio/gentle/${clip}.mp3?v=6`, import.meta.url).href;
 }
 
 function playRecording(clip) {
@@ -634,7 +634,7 @@ function hitHedgehog(now) {
   }
   renderBasket();
   renderAction();
-  showFeedback("Ой-й-й! Все цветы упали. Попробуй ещё раз.");
+  showFeedback("Ой-й-й! Все цветы упали! Попробую ещё раз!");
   playVoice("flowers-fell");
 }
 
