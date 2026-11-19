@@ -340,11 +340,90 @@ h1 {
   pointer-events: none;
 }
 
-.meadow.is-opening .meadow-art { animation: open-meadow .85s ease-out both; }
+.meadow-scenery, .meadow-clouds, .cloud-lane {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.meadow.is-opening .meadow-scenery { animation: open-meadow .85s ease-out both; }
 
 @keyframes open-meadow {
   from { opacity: .45; transform: scale(1.05); }
   to { opacity: 1; transform: scale(1); }
+}
+
+.meadow-clouds {
+  mask-image: linear-gradient(90deg, transparent 3%, black 17%, black 85%, transparent 97%);
+}
+
+.cloud-lane {
+  transform: translateX(var(--cloud-rest));
+  animation: drift-cloud var(--cloud-duration) linear infinite var(--cloud-delay);
+}
+
+.cloud-lane img {
+  position: absolute;
+  top: var(--cloud-top);
+  left: 0;
+  width: var(--cloud-size);
+  opacity: .9;
+}
+
+.cloud-one {
+  --cloud-rest: 18%;
+  --cloud-size: 19%;
+  --cloud-top: 5%;
+  --cloud-duration: 78s;
+  --cloud-delay: -31s;
+}
+
+.cloud-two {
+  --cloud-rest: 58%;
+  --cloud-size: 12%;
+  --cloud-top: 16%;
+  --cloud-duration: 90s;
+  --cloud-delay: -62s;
+}
+
+.cloud-three {
+  --cloud-rest: 77%;
+  --cloud-size: 17%;
+  --cloud-top: 4%;
+  --cloud-duration: 74s;
+  --cloud-delay: -61.5s;
+}
+
+@keyframes drift-cloud {
+  from { transform: translateX(-36%); }
+  to { transform: translateX(100%); }
+}
+
+.tree-leaves {
+  position: absolute;
+  animation: sway-leaves var(--sway-duration) ease-in-out infinite alternate;
+}
+
+.leaves-left {
+  --sway-duration: 4.6s;
+  top: -10%;
+  left: 2%;
+  width: 17%;
+  transform-origin: 9% 5%;
+}
+
+.leaves-right {
+  --sway-duration: 5.4s;
+  top: -8%;
+  right: -2%;
+  width: 14%;
+  transform-origin: 96% 5%;
+  animation-delay: -2s;
+}
+
+@keyframes sway-leaves {
+  from { transform: rotate(-3deg); }
+  to { transform: rotate(3deg); }
 }
 
 /* Keep this wrapper out of the stacking order so flowers can straddle the hedgehog's layer. */
@@ -503,16 +582,46 @@ h1 {
 .hedgehog {
   position: absolute;
   width: clamp(59px, 8.2vw, 100px);
+  aspect-ratio: 430 / 280;
   transform: translate(-50%, -100%);
   pointer-events: none;
 }
 
-.hedgehog img {
+.hedgehog-rig {
+  position: absolute;
+  inset: 0;
+  transform: scaleX(var(--hedgehog-direction, 1));
+}
+
+.hedgehog-body {
+  position: absolute;
+  bottom: 8%;
   display: block;
   width: 100%;
   height: auto;
-  transform: translateY(var(--hedgehog-step, 0px)) scaleX(var(--hedgehog-direction, 1));
+  transform: translateY(var(--hedgehog-bob, 0px));
 }
+
+.hedgehog-paw {
+  --paw-turn: var(--paw-swing, 0deg);
+  --paw-rise: var(--paw-lift, 0%);
+  position: absolute;
+  width: 13%;
+  height: auto;
+  transform: translateY(var(--paw-rise)) rotate(var(--paw-turn));
+  transform-origin: 40% 12%;
+}
+
+.paw-opposite {
+  --paw-turn: calc(0deg - var(--paw-swing, 0deg));
+  --paw-rise: var(--opposite-paw-lift, 0%);
+}
+
+.paw-back-near { top: 71%; left: 14%; }
+.paw-front-near { top: 70%; left: 60%; }
+.paw-back-far { top: 70%; left: 28%; }
+.paw-front-far { top: 62%; left: 70%; }
+.paw-back-far, .paw-front-far { scale: .88; filter: brightness(.83); }
 
 .girl-poses > img, .mom img {
   position: absolute;
@@ -1024,6 +1133,11 @@ h1 {
   }
 
   .meadow-art { object-position: 59% center; }
+  .cloud-one { --cloud-size: 31%; --cloud-top: 11%; }
+  .cloud-two { --cloud-size: 18%; --cloud-top: 25%; }
+  .cloud-three { --cloud-size: 28%; --cloud-top: 6%; }
+  .leaves-left { top: -6%; left: -4%; width: 29%; }
+  .leaves-right { top: -5%; right: -6%; width: 29%; }
   .field-flower { left: var(--mx); top: var(--my); z-index: var(--phone-ground-layer); }
   .girl { left: var(--girl-x, 16%); top: var(--girl-y, 43.5%); }
   .game-hud { top: 10px; right: auto; left: 10px; flex-direction: row; }
@@ -1079,7 +1193,8 @@ h1 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hedgehog img { --hedgehog-step: 0px; }
+  .cloud-lane, .tree-leaves { animation-name: none; }
+  .hedgehog-body, .hedgehog-paw { transform: none; }
   *, *::before, *::after {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;

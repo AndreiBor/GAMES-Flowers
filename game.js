@@ -1,5 +1,5 @@
 import { flowerImages, flowerTypes, logoFlower } from "./flower-art.js";
-import { Hedgehog, groundLayer } from "./hedgehog.js?v=4";
+import { Hedgehog, groundLayer } from "./hedgehog.js?v=5";
 
 const ROUND_SECONDS = 120;
 const rounds = [
@@ -316,7 +316,7 @@ function showFeedback(message) {
 }
 
 function recordingURL(clip) {
-  return new URL(`./assets/audio/gentle/${clip}.mp3?v=3`, import.meta.url).href;
+  return new URL(`./assets/audio/gentle/${clip}.mp3?v=4`, import.meta.url).href;
 }
 
 function playRecording(clip) {
@@ -584,7 +584,7 @@ function movePlayer(now) {
   lastFrameTime = now;
   const speed = Math.max(395, meadowSize.width * .9) * .9;
   const hedgehogBefore = hedgehog.position;
-  if (hedgehog.pace) hedgehog.advance(elapsed, meadowSize, now);
+  if (hedgehog.pace) hedgehog.advance(elapsed, meadowSize);
   if (startledUntil && now >= startledUntil) clearReaction();
 
   let running = false;

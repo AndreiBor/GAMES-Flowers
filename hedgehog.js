@@ -21,6 +21,7 @@ export class Hedgehog {
     this.trail = (compact ? phoneTrail : wideTrail).map(([x, y]) => ({ x, y }));
     this.position = this.trail[0];
     this.nextStop = 1;
+    this.stride = 0;
     this.mushrooms = this.trail.slice(1).map(({ x, y }) => {
       const mushroom = document.createElement("span");
       mushroom.className = "wood-mushroom";
@@ -30,10 +31,11 @@ export class Hedgehog {
     });
     this.mushroomBed.append(...this.mushrooms);
     this.sprite.style.setProperty("--hedgehog-direction", 1);
+    this.renderStride();
     this.render();
   }
 
-  advance(seconds, size, now) {
+  advance(seconds, size) {
     const target = this.trail[this.nextStop];
     const dx = (target.x - this.position.x) * size.width / 100;
     const dy = (target.y - this.position.y) * size.height / 100;
@@ -55,8 +57,19 @@ export class Hedgehog {
       };
     }
     if (Math.abs(dx) > .5) this.sprite.style.setProperty("--hedgehog-direction", Math.sign(dx));
-    this.sprite.style.setProperty("--hedgehog-step", `${-Math.abs(Math.sin(now / 100)) * 2.5}px`);
+    const strideLength = Math.min(28, Math.max(17, size.width * .028));
+    this.stride = (this.stride + Math.min(distance, step) / strideLength * 2 * Math.PI) % (2 * Math.PI);
+    this.renderStride();
     this.render();
+  }
+
+  renderStride() {
+    const swing = Math.sin(this.stride);
+    const lift = Math.cos(this.stride);
+    this.sprite.style.setProperty("--paw-swing", `${swing * 28}deg`);
+    this.sprite.style.setProperty("--paw-lift", `${-Math.max(0, lift) * 20}%`);
+    this.sprite.style.setProperty("--opposite-paw-lift", `${-Math.max(0, -lift) * 20}%`);
+    this.sprite.style.setProperty("--hedgehog-bob", `${-Math.abs(swing) * 1.7}px`);
   }
 
   render() {
