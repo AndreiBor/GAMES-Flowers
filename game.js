@@ -348,7 +348,7 @@ function showFeedback(message) {
 }
 
 function recordingURL(clip) {
-  return new URL(`./assets/audio/gentle/${clip}.mp3?v=7`, import.meta.url).href;
+  return new URL(`./assets/audio/gentle/${clip}.mp3?v=8`, import.meta.url).href;
 }
 
 function playRecording(clip) {
