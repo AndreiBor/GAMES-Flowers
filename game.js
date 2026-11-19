@@ -1,4 +1,5 @@
 import { flowerImages, flowerTypes, logoFlower } from "./flower-art.js";
+import { Hedgehog } from "./hedgehog.js";
 
 const ROUND_SECONDS = 120;
 const rounds = [
@@ -21,6 +22,24 @@ const rounds = [
     task: "Собери 2 красных, 2 синих, 2 зелёных и 3 жёлтых цветка",
     target: { red: 2, blue: 2, green: 2, yellow: 3 },
     voice: "round-4",
+  },
+  {
+    task: "Собери по одному цветку каждого цвета",
+    target: { red: 1, blue: 1, green: 1, yellow: 1 },
+    voice: "round-5",
+    hedgehogPace: 1,
+  },
+  {
+    task: "Собери все цветы любого одного цвета",
+    goal: "one-color",
+    voice: "round-6",
+    hedgehogPace: 1.26,
+  },
+  {
+    task: "Собери все цветы, кроме жёлтых",
+    goal: "no-yellow",
+    voice: "round-7",
+    hedgehogPace: 1.52,
   },
 ];
 
@@ -45,13 +64,22 @@ const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const meadow = document.querySelector("#meadow");
 const flowerBed = document.querySelector("#flowers");
 const girl = document.querySelector("#girl");
+const droppedFlowers = document.querySelector("#dropped-flowers");
+const hedgehog = new Hedgehog(document.querySelector("#hedgehog"), document.querySelector("#mushrooms"));
 const mom = document.querySelector("#mom");
 const timer = document.querySelector("#timer");
 const timeText = document.querySelector("#time");
 const task = document.querySelector("#task");
+const missionHint = document.querySelector("#mission-hint");
+const movementHint = document.querySelector("#movement-hint");
 const targets = document.querySelector("#targets");
 const roundLabel = document.querySelector("#round-label");
-const roundSteps = [...document.querySelector("#round-steps").children];
+const roundSteps = rounds.map(() => {
+  const step = document.createElement("li");
+  step.append(document.createElement("span"));
+  return step;
+});
+document.querySelector("#round-steps").replaceChildren(...roundSteps);
 const basketTotal = document.querySelector("#basket-total");
 const basketFlowers = document.querySelector("#basket-flowers");
 const carriedFlowers = document.querySelector("#carried-flowers");
@@ -61,9 +89,6 @@ const sound = document.querySelector("#sound");
 const soundLabel = document.querySelector("#sound-label");
 const soundSettings = document.querySelector("#sound-settings");
 const soundEnabled = document.querySelector("#sound-enabled");
-const voiceOptions = [...soundSettings.querySelectorAll('input[name="game-voice"]')];
-const previewButtons = [...soundSettings.querySelectorAll("[data-preview]")];
-const previewMessage = document.querySelector("#preview-message");
 const listen = document.querySelector("#listen");
 const voice = document.querySelector("#voice");
 const celebration = document.querySelector("#celebration");
@@ -75,9 +100,9 @@ const nextRound = document.querySelector("#next-round");
 let roundIndex = 0;
 let phase = "ready";
 let flowers = [];
+let roundTarget;
 let basket = [];
 let muted = false;
-let selectedVoice = voiceOptions[0].value;
 let voiceClip = "";
 let settingsOpenedAt = null;
 let deadline = 0;
@@ -91,6 +116,8 @@ let deliveryPending = false;
 let activeMove = null;
 let motionFrame = 0;
 let lastFrameTime = 0;
+let startledUntil = 0;
+let collisionGraceUntil = 0;
 const moves = [];
 const keysHeld = new Set();
 const arrows = {
@@ -119,15 +146,15 @@ function makeCount(color, count) {
   return chip;
 }
 
-function basketCounts() {
+function countColors(colors) {
   const counts = {};
-  for (const color of basket) counts[color] = (counts[color] ?? 0) + 1;
+  for (const color of colors) counts[color] = (counts[color] ?? 0) + 1;
   return counts;
 }
 
 function renderBasket() {
   basketTotal.textContent = `${basket.length} ${flowerNumber(basket.length)}`;
-  const counts = basketCounts();
+  const counts = countColors(basket);
   basketFlowers.replaceChildren(...Object.keys(flowerTypes)
     .filter(color => counts[color])
     .map(color => makeCount(color, counts[color])));
@@ -227,9 +254,25 @@ function clearMoves() {
   deliveryPending = false;
 }
 
+function clearReaction() {
+  if (startledUntil) {
+    for (const flower of flowers) {
+      if (!flower.collected) continue;
+      flower.collected = false;
+      flower.button.hidden = false;
+    }
+  }
+  startledUntil = 0;
+  girl.classList.remove("is-startled");
+  droppedFlowers.replaceChildren();
+}
+
 function resetField() {
   const focusedFlower = flowerBed.contains(document.activeElement);
   clearMoves();
+  clearReaction();
+  collisionGraceUntil = 0;
+  hedgehog.reset(rounds[roundIndex].hedgehogPace, narrow.matches);
   player = { ...startPosition(), direction: 1 };
   flowers = plot.map(makeFlower);
   flowerBed.replaceChildren(...flowers.map(flower => flower.button));
@@ -261,13 +304,13 @@ function showFeedback(message) {
   if (message) feedbackHandle = setTimeout(() => { feedback.textContent = ""; }, 4700);
 }
 
-function recordingURL(pack, clip) {
-  return new URL(`./assets/audio/${pack}/${clip}.mp3?v=2`, import.meta.url).href;
+function recordingURL(clip) {
+  return new URL(`./assets/audio/gentle/${clip}.mp3?v=3`, import.meta.url).href;
 }
 
-function playRecording(pack, clip) {
+function playRecording(clip) {
   voiceClip = clip;
-  const source = recordingURL(pack, clip);
+  const source = recordingURL(clip);
   voice.pause();
   if (voice.src === source) voice.currentTime = 0;
   else voice.src = source;
@@ -275,21 +318,7 @@ function playRecording(pack, clip) {
 }
 
 function playVoice(clip) {
-  if (!muted) playRecording(selectedVoice, clip).catch(() => {});
-}
-
-function restoreVoice() {
-  try {
-    const saved = localStorage.getItem("flower-meadow-voice");
-    const option = voiceOptions.find(input => input.value === saved);
-    if (option) {
-      option.checked = true;
-      selectedVoice = option.value;
-    }
-  } catch {
-    // Storage can be disabled. The selected voice still works for this visit.
-  }
-  voice.src = recordingURL(selectedVoice, rounds[0].voice);
+  if (!muted) playRecording(clip).catch(() => {});
 }
 
 function updateSound() {
@@ -303,12 +332,23 @@ function prepareRound() {
   clearInterval(timerHandle);
   phase = "ready";
   const round = rounds[roundIndex];
+  resetField();
+  roundTarget = round.target ?? countColors(flowers.map(flower => flower.color));
+  if (round.goal === "no-yellow") delete roundTarget.yellow;
   task.textContent = round.task;
-  targets.replaceChildren(...Object.entries(round.target).map(([color, count]) => makeCount(color, count)));
+  missionHint.textContent = hedgehog.pace
+    ? "Осторожно, ёжик! Отнеси букет маме."
+    : "Потом подари букет маме.";
+  movementHint.textContent = hedgehog.pace
+    ? "Чтобы обойти ёжика, нажми на лужайку."
+    : "Нажимай на цветы, чтобы собрать их.";
+  targets.setAttribute("aria-label", round.goal === "one-color" ? "Выбери один цвет" : "Цветы для букета");
+  targets.replaceChildren(...Object.keys(flowerTypes)
+    .filter(color => roundTarget[color])
+    .map(color => makeCount(color, roundTarget[color])));
   renderProgress();
   showFeedback("");
   displayTime(ROUND_SECONDS);
-  resetField();
   revealMeadow();
 }
 
@@ -325,6 +365,7 @@ function startRound() {
   restartClock();
   renderAction();
   playVoice(rounds[roundIndex].voice);
+  if (hedgehog.pace) requestMotion();
 }
 
 function retryAttempt(message, clip) {
@@ -332,6 +373,7 @@ function retryAttempt(message, clip) {
   restartClock();
   showFeedback(message);
   playVoice(clip);
+  if (hedgehog.pace) requestMotion();
 }
 
 function checkTime(now = performance.now()) {
@@ -350,7 +392,7 @@ function flowerPoint(flower) {
 }
 
 function queueFlower(flower) {
-  if (flower.queued || flower.collected || deliveryPending) return;
+  if (flower.queued || flower.collected || deliveryPending || startledUntil) return;
   startRound();
   if (!checkTime()) return;
   flower.queued = true;
@@ -364,7 +406,7 @@ function queueDelivery() {
     startRound();
     return;
   }
-  if (deliveryPending || !checkTime()) return;
+  if (deliveryPending || startledUntil || !checkTime()) return;
   deliveryPending = true;
   renderAction();
   moves.push({ kind: "deliver" });
@@ -390,9 +432,12 @@ function collect(flower) {
 
 function deliver() {
   const round = rounds[roundIndex];
-  const counts = basketCounts();
-  const correct = basket.length === Object.values(round.target).reduce((sum, count) => sum + count, 0)
-    && Object.entries(round.target).every(([color, count]) => counts[color] === count);
+  const counts = countColors(basket);
+  const target = Object.entries(roundTarget);
+  const correct = round.goal === "one-color"
+    ? target.some(([color, count]) => basket.length === count && counts[color] === count)
+    : basket.length === target.reduce((sum, [, count]) => sum + count, 0)
+      && target.every(([color, count]) => counts[color] === count);
   if (correct) {
     celebrate();
   } else if (roundIndex === 0 && basket.length !== 5) {
@@ -453,8 +498,6 @@ function followMove(move, step) {
   if (Math.abs(delta.x) > 1) player.direction = Math.sign(delta.x);
   Object.assign(player, destination);
   activeMove = null;
-  if (move.kind === "pick") collect(move.flower);
-  if (move.kind === "deliver") deliver();
   return false;
 }
 
@@ -476,16 +519,60 @@ function movePlayer(now) {
   if (!checkTime(now)) return;
   const elapsed = lastFrameTime ? Math.min(now - lastFrameTime, 40) / 1000 : 1 / 60;
   lastFrameTime = now;
-  const speed = Math.max(395, meadowSize.width * .9);
-  activeMove ??= moves.shift();
-  const running = activeMove ? followMove(activeMove, speed * elapsed) : followKeys(speed * .7 * elapsed);
+  const speed = Math.max(395, meadowSize.width * .9) * .9;
+  const hedgehogBefore = hedgehog.position;
+  if (hedgehog.pace) hedgehog.advance(elapsed, meadowSize, now);
+  if (startledUntil && now >= startledUntil) clearReaction();
+
+  let running = false;
+  if (!startledUntil) {
+    const playerBefore = { x: player.x, y: player.y };
+    activeMove ??= moves.shift();
+    const move = activeMove;
+    running = move ? followMove(move, speed * elapsed) : followKeys(speed * .7 * elapsed);
+    if (hedgehog.pace && now >= collisionGraceUntil && hedgehog.crossed(playerBefore, player, hedgehogBefore, meadowSize)) {
+      hitHedgehog(now);
+      running = false;
+    } else if (move && !activeMove) {
+      if (move.kind === "pick") collect(move.flower);
+      if (move.kind === "deliver") deliver();
+    }
+  }
   renderPlayer(running, now);
 
-  if (phase === "playing" && (activeMove || moves.length || keysHeld.size)) {
+  if (phase === "playing" && (hedgehog.pace || activeMove || moves.length || keysHeld.size)) {
     requestMotion();
   } else {
     lastFrameTime = 0;
   }
+}
+
+function hitHedgehog(now) {
+  clearMoves();
+  startledUntil = now + 650;
+  collisionGraceUntil = now + 1750;
+  girl.classList.add("is-startled");
+  droppedFlowers.style.left = `${player.x}%`;
+  droppedFlowers.style.top = `${player.y}%`;
+  droppedFlowers.replaceChildren(...basket.map((color, index) => {
+    const flower = new Image();
+    flower.src = flowerImages[color].whole;
+    flower.alt = "";
+    const spread = (index % 7 - 3) * 15 + (index % 3) * 5;
+    flower.style.setProperty("--drop-x", `${spread}px`);
+    flower.style.setProperty("--drop-y", `${index % 3 * 6 - 7}px`);
+    flower.style.setProperty("--drop-angle", `${spread * 2.4}deg`);
+    return flower;
+  }));
+  basket = [];
+  for (const flower of flowers) {
+    flower.queued = false;
+    flower.button.classList.remove("is-queued");
+  }
+  renderBasket();
+  renderAction();
+  showFeedback("Ой-й-й! Все цветы упали. Попробуй ещё раз.");
+  playVoice("flowers-fell");
 }
 
 function interactNearby() {
@@ -513,7 +600,7 @@ function celebrate() {
   showFeedback("");
   renderProgress();
   const last = roundIndex === rounds.length - 1;
-  celebrationMessage.textContent = last ? "Все четыре букета собраны!" : "Ты собрала нужный букет.";
+  celebrationMessage.textContent = last ? "Все семь букетов собраны!" : "Ты собрала нужный букет.";
   nextRound.firstElementChild.textContent = last ? "Играть снова" : "Следующий раунд";
   nextRound.lastElementChild.className = last ? "icon icon-restart" : "icon icon-arrow";
   nextRound.setAttribute("aria-disabled", "true");
@@ -548,7 +635,7 @@ function playThanks() {
   }
   const fallback = setTimeout(allowNextRound, 7000);
   voice.addEventListener("ended", allowNextRound);
-  playRecording(selectedVoice, "thanks").catch(allowNextRound);
+  playRecording("thanks").catch(allowNextRound);
 }
 
 sound.addEventListener("click", () => {
@@ -559,41 +646,19 @@ sound.addEventListener("click", () => {
   keysHeld.clear();
   renderPlayer();
   voice.pause();
-  previewMessage.textContent = "";
   soundSettings.showModal();
-  voiceOptions.find(option => option.checked).focus();
 });
 soundSettings.addEventListener("close", () => {
   voice.pause();
   if (phase === "playing") deadline += performance.now() - settingsOpenedAt;
   settingsOpenedAt = null;
-  if (activeMove || moves.length) requestMotion();
+  if (phase === "playing" && (hedgehog.pace || activeMove || moves.length)) requestMotion();
 });
 soundEnabled.addEventListener("change", () => {
   muted = !soundEnabled.checked;
   if (muted) voice.pause();
   updateSound();
 });
-for (const option of voiceOptions) {
-  option.addEventListener("change", () => {
-    selectedVoice = option.value;
-    try {
-      localStorage.setItem("flower-meadow-voice", selectedVoice);
-    } catch {
-      // The setting still applies in this tab.
-    }
-  });
-}
-for (const button of previewButtons) {
-  button.addEventListener("click", () => {
-    previewMessage.textContent = "";
-    playRecording(button.dataset.preview, "sample").catch(error => {
-      if (error.name !== "AbortError" && soundSettings.open) {
-        previewMessage.textContent = "Не удалось воспроизвести голос. Попробуй ещё раз.";
-      }
-    });
-  });
-}
 listen.addEventListener("click", () => {
   muted = false;
   updateSound();
@@ -601,21 +666,15 @@ listen.addEventListener("click", () => {
 });
 voice.addEventListener("playing", () => {
   listen.classList.toggle("is-speaking", voiceClip === rounds[roundIndex].voice);
-  for (const button of previewButtons) {
-    button.classList.toggle("is-speaking", voice.src === recordingURL(button.dataset.preview, "sample"));
-  }
 });
 for (const event of ["pause", "ended", "error"]) {
-  voice.addEventListener(event, () => {
-    listen.classList.remove("is-speaking");
-    for (const button of previewButtons) button.classList.remove("is-speaking");
-  });
+  voice.addEventListener(event, () => listen.classList.remove("is-speaking"));
 }
 
 actionButton.addEventListener("click", startOrDeliver);
 mom.addEventListener("click", queueDelivery);
 meadow.addEventListener("click", event => {
-  if (event.target !== meadow || deliveryPending || !checkTime()) return;
+  if (event.target !== meadow || deliveryPending || startledUntil || !checkTime()) return;
   const rect = meadow.getBoundingClientRect();
   const y = (event.clientY - rect.top) / meadowSize.height * 100;
   if (y < (narrow.matches ? 39 : 42)) return;
@@ -644,6 +703,7 @@ window.addEventListener("blur", () => keysHeld.clear());
 new ResizeObserver(measureMeadow).observe(meadow);
 narrow.addEventListener("change", () => {
   Object.assign(player, phase === "ready" ? startPosition() : limitWalk(player.x, player.y));
+  hedgehog.reset(rounds[roundIndex].hedgehogPace, narrow.matches);
   renderPlayer();
 });
 
@@ -661,4 +721,4 @@ document.querySelector("#brand-flower").src = logoFlower;
 document.querySelector('link[rel="icon"]').href = logoFlower;
 measureMeadow();
 prepareRound();
-restoreVoice();
+voice.src = recordingURL(rounds[0].voice);

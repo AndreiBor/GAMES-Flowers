@@ -149,7 +149,7 @@ button:focus-visible, [tabindex]:focus-visible {
 .sound-settings::backdrop { background: #30204476; backdrop-filter: blur(2px); }
 .sound-settings h2 { margin: 0 0 10px; font-size: 1.8rem; font-weight: 950; }
 
-.sound-switch, .voice-option label {
+.sound-switch {
   display: flex;
   min-height: 44px;
   align-items: center;
@@ -165,37 +165,6 @@ button:focus-visible, [tabindex]:focus-visible {
   accent-color: var(--violet);
 }
 
-.voice-options { display: grid; gap: 6px; min-width: 0; margin: 10px 0 0; padding: 0; border: 0; }
-.voice-options legend { margin-bottom: 8px; padding: 0; color: var(--muted); font-weight: 850; }
-
-.voice-option {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 4px 3px 10px;
-  border: 1px solid var(--edge);
-  border-radius: 13px;
-  background: #fff;
-}
-
-.voice-option:has(input:checked) { border-color: #d6c3f0; background: #f3ebff; }
-.voice-option label { flex: 1; }
-
-.voice-preview {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  flex: none;
-  place-items: center;
-  border: 1px solid #e5d7f5;
-  border-radius: 10px;
-  background: #fff;
-  color: var(--violet-dark);
-}
-
-.voice-preview:hover, .voice-preview.is-speaking { background: #e8d9fb; }
-.preview-message { margin: 8px 0 0; color: var(--muted); font-size: .9rem; }
-.preview-message:empty { display: none; }
 .sound-settings form { display: flex; justify-content: end; margin-top: 15px; }
 
 .game { padding-block: 24px 32px; }
@@ -449,6 +418,97 @@ h1 {
   position: absolute;
   inset: 0;
   transform: translateY(var(--hop, 0px)) scaleX(var(--facing, 1));
+}
+
+.girl.is-startled .girl-poses { animation: startled-hop .61s ease-out both; }
+
+@keyframes startled-hop {
+  0%, 100% { translate: 0 0; }
+  38% { translate: 0 -31px; }
+}
+
+.girl-exclamation {
+  position: absolute;
+  z-index: 1;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  display: none;
+  padding: 4px 10px;
+  transform: translateX(-50%);
+  border: 1px solid #f1dbb2;
+  border-radius: 11px;
+  background: #fff7dc;
+  color: #714233;
+  font-weight: 950;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px #3c471524;
+}
+
+.girl.is-startled .girl-exclamation { display: block; }
+
+.dropped-flowers {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.dropped-flowers img {
+  position: absolute;
+  width: clamp(24px, 4vw, 44px);
+  height: auto;
+  transform-origin: bottom center;
+  animation: scatter-flower .65s ease-in both;
+}
+
+@keyframes scatter-flower {
+  0% { transform: translate(-50%, -170%) rotate(0); }
+  72% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--drop-x)), var(--drop-y)) rotate(var(--drop-angle));
+  }
+}
+
+.mushrooms { position: absolute; inset: 0; pointer-events: none; }
+
+.wood-mushroom {
+  position: absolute;
+  width: clamp(19px, 2.8vw, 30px);
+  aspect-ratio: 1.15;
+  transform: translate(-50%, -100%);
+  filter: drop-shadow(0 2px 1px #5d733249);
+}
+
+.wood-mushroom::before, .wood-mushroom::after { position: absolute; content: ""; }
+
+.wood-mushroom::before {
+  z-index: 1;
+  inset: 0 0 39%;
+  border: 1px solid #965130;
+  border-radius: 55% 55% 38% 38% / 88% 88% 24% 24%;
+  background: radial-gradient(ellipse at 31% 12%, #ffe5a7, #cf8a4f 52%, #a15a36);
+}
+
+.wood-mushroom::after {
+  inset: 42% 31% 0 34%;
+  border: 1px solid #b39155;
+  border-radius: 38%;
+  background: linear-gradient(105deg, #fff0c1, #d3a769);
+}
+
+.hedgehog {
+  position: absolute;
+  z-index: 2;
+  width: clamp(59px, 8.2vw, 100px);
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+}
+
+.hedgehog img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transform: translateY(var(--hedgehog-step, 0px)) scaleX(var(--hedgehog-direction, 1));
 }
 
 .girl-poses > img, .mom img {
@@ -924,6 +984,10 @@ h1 {
   .mission:has(.target-list li:nth-child(2)) .listen { grid-row: span 2; }
 }
 
+@media (max-width: 390px) {
+  .round-steps { display: none; }
+}
+
 @media (max-width: 365px) {
   h1 { font-size: 1.75rem; }
   .meadow { height: clamp(366px, 107vw, 390px); }
@@ -935,6 +999,7 @@ h1 {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .hedgehog img { --hedgehog-step: 0px; }
   *, *::before, *::after {
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;

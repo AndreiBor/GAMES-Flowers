@@ -7,8 +7,8 @@
     <meta name="description" content="Цветочная полянка — игра на счёт и цвета. Собери букет и подари его маме!">
     <title>Цветочная полянка</title>
     <link rel="icon" href="data:,">
-    <link rel="stylesheet" href="./styles.css">
-    <script type="module" src="./game.js?v=2"></script>
+    <link rel="stylesheet" href="./styles.css?v=3">
+    <script type="module" src="./game.js?v=3"></script>
   </head>
   <body>
     <header class="page-header">
@@ -28,13 +28,8 @@
       <div class="game-heading">
         <h1>Сбор цветов</h1>
         <div class="progress">
-          <span id="round-label">Раунд 1 из 4</span>
-          <ol class="round-steps" id="round-steps" aria-label="Раунды">
-            <li aria-current="step" aria-label="Раунд 1"><span>1</span></li>
-            <li aria-label="Раунд 2"><span>2</span></li>
-            <li aria-label="Раунд 3"><span>3</span></li>
-            <li aria-label="Раунд 4"><span>4</span></li>
-          </ol>
+          <span id="round-label">Раунд 1 из 7</span>
+          <ol class="round-steps" id="round-steps" aria-label="Раунды"></ol>
         </div>
       </div>
 
@@ -44,7 +39,7 @@
         </button>
         <div class="mission-text">
           <h2 id="task">Собери 5 синих цветов</h2>
-          <p>Потом подари букет маме.</p>
+          <p id="mission-hint">Потом подари букет маме.</p>
         </div>
         <ul class="target-list" id="targets" aria-label="Цветы для букета"></ul>
       </section>
@@ -52,7 +47,12 @@
       <section class="meadow" id="meadow" tabindex="0" aria-label="Цветочная лужайка" aria-describedby="how-to-play" aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Space">
         <img class="meadow-art" src="./assets/meadow.webp" alt="" fetchpriority="high" width="1921" height="819">
         <div class="butterfly" aria-hidden="true"><i></i><i></i></div>
+        <div id="mushrooms" class="mushrooms" aria-hidden="true"></div>
         <div id="flowers" class="flowers"></div>
+        <div id="hedgehog" class="hedgehog" role="img" aria-label="Ёжик собирает грибы" hidden>
+          <span class="ground-shadow"></span>
+          <img src="./assets/characters/hedgehog.webp" alt="" width="430" height="280" draggable="false">
+        </div>
         <div class="girl" id="girl" data-pose="stand" aria-hidden="true">
           <span class="ground-shadow"></span>
           <div class="girl-poses">
@@ -61,7 +61,9 @@
             <img src="./assets/characters/run-2.webp" alt="" class="girl-run-two" draggable="false">
             <span class="carried-flowers" id="carried-flowers"></span>
           </div>
+          <span class="girl-exclamation">Ой-й-й!</span>
         </div>
+        <div id="dropped-flowers" class="dropped-flowers" aria-hidden="true"></div>
         <button type="button" id="mom" class="mom" aria-label="Подарить цветы маме">
           <span class="mom-name" aria-hidden="true">Мама</span>
           <span class="ground-shadow" aria-hidden="true"></span>
@@ -86,7 +88,7 @@
         <ul class="basket-flowers" id="basket-flowers" aria-label="Собранные цветы"></ul>
         <p id="how-to-play" class="tip">
           <span class="icon icon-tap" aria-hidden="true"></span>
-          Нажимай на цветы, чтобы собрать их.
+          <span id="movement-hint">Нажимай на цветы, чтобы собрать их.</span>
         </p>
         <button type="button" class="primary-button" id="main-action">
           <span class="icon icon-play" aria-hidden="true"></span>
@@ -124,28 +126,6 @@
         <input type="checkbox" id="sound-enabled" checked>
         <span>Озвучка в игре</span>
       </label>
-      <fieldset class="voice-options">
-        <legend>Выбери голос</legend>
-        <div class="voice-option">
-          <label><input type="radio" name="game-voice" value="gentle" checked> Нежный</label>
-          <button type="button" class="voice-preview" data-preview="gentle" aria-label="Послушать нежный голос" title="Послушать">
-            <span class="icon icon-play" aria-hidden="true"></span>
-          </button>
-        </div>
-        <div class="voice-option">
-          <label><input type="radio" name="game-voice" value="calm"> Мягкий</label>
-          <button type="button" class="voice-preview" data-preview="calm" aria-label="Послушать мягкий голос" title="Послушать">
-            <span class="icon icon-play" aria-hidden="true"></span>
-          </button>
-        </div>
-        <div class="voice-option">
-          <label><input type="radio" name="game-voice" value="cheerful"> Весёлый</label>
-          <button type="button" class="voice-preview" data-preview="cheerful" aria-label="Послушать весёлый голос" title="Послушать">
-            <span class="icon icon-play" aria-hidden="true"></span>
-          </button>
-        </div>
-      </fieldset>
-      <p id="preview-message" class="preview-message" role="status"></p>
       <form method="dialog"><button class="primary-button">Готово</button></form>
     </dialog>
 
